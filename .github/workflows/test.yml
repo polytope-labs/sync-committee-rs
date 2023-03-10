@@ -84,7 +84,7 @@ jobs:
       - name: install just
         run: |
           sudo apt install just
-          just create-config
+          just create-config &
 
       - name: run generate-keys
         run: just generate-keys
@@ -93,13 +93,13 @@ jobs:
         run: just init-geth
 
       - name: run run-el
-        run: just run-el
+        run: just run-el &
 
       - name: run run-cl
-        run: just run-cl
+        run: just run-cl &
 
       - name: run run-validator
-        run: just run-validator
+        run: just run-validator &
 
       - name: Run all tests
         run: |
