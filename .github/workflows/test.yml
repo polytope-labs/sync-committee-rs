@@ -33,12 +33,6 @@ jobs:
           owner: "ralexstokes"
           repository: "eth-testnet-runner"
 
-      - name: Set MIN_GENESIS_TIME to 1 with sed
-        run: |
-          cd eth-testnet-runner/config-data/custom_config_data
-          sed -i 's/^MIN_GENESIS_TIME:.*/MIN_GENESIS_TIME: 1/' config.yaml
-
-
       - name: Fetch geth binary
         run: |
           cd eth-testnet-runner
@@ -86,6 +80,12 @@ jobs:
         run: |
           cargo install just
           just create-config &
+
+      - name: Set MIN_GENESIS_TIME to 1 with sed
+        run: |
+          ls -l
+          cd eth-testnet-runner/config-data/custom_config_data
+          sed -i 's/^MIN_GENESIS_TIME:.*/MIN_GENESIS_TIME: 1/' config.yaml
 
       - name: run generate-keys
         run: just generate-keys
