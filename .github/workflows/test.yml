@@ -70,7 +70,7 @@ jobs:
           override: true
 
       - name: Install protc (lighthouse dependency)
-        run: apt-get install protobuf-compiler
+        run: sudo apt-get install protobuf-compiler
 
       - name: Clone lighthouse repository and build
         uses: GuillaumeFalourd/clone-github-repo-action@v2
@@ -86,7 +86,7 @@ jobs:
 
       - name: install just
         run: |
-          apt-get install just
+          sudo apt-get install just
           just create-config &
 
       - name: run generate-keys
