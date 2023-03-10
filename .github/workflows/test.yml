@@ -37,7 +37,7 @@ jobs:
         run: |
           cd eth-testnet-runner
           mkdir bin
-          wget https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.11.3-5ed08c47.tar.gz -0 ./geth-linux-amd64-1.11.3-5ed08c47.tar.gz
+          wget https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.11.3-5ed08c47.tar.gz -O ./geth-linux-amd64-1.11.3-5ed08c47.tar.gz
           tar -xvf geth-linux-amd64-1.11.3-5ed08c47.tar.gz
           cd geth-linux-amd64-1.11.3-5ed08c47
           cp geth ../bin
