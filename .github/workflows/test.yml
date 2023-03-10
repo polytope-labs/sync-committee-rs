@@ -30,9 +30,9 @@ jobs:
       - name: Clone eth-testnet-runner repository
         uses: GuillaumeFalourd/clone-github-repo-action@v2
         with:
-          owner: 'ralexstokes'
-          repository: 'eth-testnet-runner'
-      
+          owner: "ralexstokes"
+          repository: "eth-testnet-runner"
+
       - name: Download geth binary
         run: |
           cd eth-testnet-runner
@@ -42,18 +42,21 @@ jobs:
           cd geth-linux-amd64-1.11.3-5ed08c47
           cp geth ../bin
 
-      - name: Install go 
-        uses: actions/checkout@v3
+      - name: Install go
         uses: actions/setup-go@v3
         with:
-          go-version: 'stable'
+          go-version: "stable"
+
+      - name: check go version
         run: go version
 
-      - name: Clone eth2-val-tools repo and build
+      - name: Clone eth2-val-tools repo
         uses: GuillaumeFalourd/clone-github-repo-action@v2
         with:
-          owner: 'protolambda'
-          repository: 'eth2-val-tools'
+          owner: "protolambda"
+          repository: "eth2-val-tools"
+
+      - name: build eth2-val-tools and move binary to eth-testnet-runner bin folder
         run: |
           cd eth2-val-tools
           go build
@@ -69,18 +72,20 @@ jobs:
       - name: Clone lighthouse repository and build
         uses: GuillaumeFalourd/clone-github-repo-action@v2
         with:
-          owner: 'sigp'
-          repository: 'lighthouse'
+          owner: "sigp"
+          repository: "lighthouse"
+
+      - name: build lighthouse and move binary to eth-testnet-runner bin folder
         run: |
           cd lighthouse
           cargo build --release
           cp ./target/release/lighthouse ../eth-testnet-runner/bin
-      
+
       - name: install just
         run: |
           sudo apt install just
           just create-config
-      
+
       - name: run generate-keys
           just generate-keys
 
