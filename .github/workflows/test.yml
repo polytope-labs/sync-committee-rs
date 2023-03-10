@@ -83,7 +83,7 @@ jobs:
 
       - name: install just
         run: |
-          sudo apt install just
+          apt-get install just
           just create-config &
 
       - name: run generate-keys
