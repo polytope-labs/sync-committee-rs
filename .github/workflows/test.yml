@@ -76,9 +76,6 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Install protc (lighthouse dependency)
-        run: sudo apt-get install protobuf-compiler
-
       - name: install just
         run: |
           sudo apt-get install just
