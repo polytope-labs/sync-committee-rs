@@ -1,0 +1,101 @@
+name: Test
+
+on: [push]
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@main
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Run cargo check
+        run: cargo check
+
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@master
+
+      - name: Clone eth-testnet-runner repository
+        uses: GuillaumeFalourd/clone-github-repo-action@v2
+        with:
+          owner: 'ralexstokes'
+          repository: 'eth-testnet-runner'
+      
+      - name: Download geth binary
+        run: |
+          cd eth-testnet-runner
+          mkdir bin
+          wget https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.11.3-5ed08c47.tar.gz -0 ./geth-linux-amd64-1.11.3-5ed08c47.tar.gz
+          tar -xvf geth-linux-amd64-1.11.3-5ed08c47.tar.gz
+          cd geth-linux-amd64-1.11.3-5ed08c47
+          cp geth ../bin
+
+      - name: Install go 
+        uses: actions/checkout@v3
+        uses: actions/setup-go@v3
+        with:
+          go-version: 'stable'
+        run: go version
+
+      - name: Clone eth2-val-tools repo and build
+        uses: GuillaumeFalourd/clone-github-repo-action@v2
+        with:
+          owner: 'protolambda'
+          repository: 'eth2-val-tools'
+        run: |
+          cd eth2-val-tools
+          go build
+          cp eth2-val-tools ../eth-testnet-runner/bin
+
+      - name: Install rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Clone lighthouse repository and build
+        uses: GuillaumeFalourd/clone-github-repo-action@v2
+        with:
+          owner: 'sigp'
+          repository: 'lighthouse'
+        run: |
+          cd lighthouse
+          cargo build --release
+          cp ./target/release/lighthouse ../eth-testnet-runner/bin
+      
+      - name: install just
+        run: |
+          sudo apt install just
+          just create-config
+      
+      - name: run generate-keys
+          just generate-keys
+
+      - name: run init-geth
+          just init-geth
+
+      - name: run run-el
+          just run-el
+
+      - name: run run-cl
+          just run-cl
+
+      - name: run run-validator
+          just run-validator
+
+      - name: Run all tests
+        run: |
+          cargo test
