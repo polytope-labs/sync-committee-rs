@@ -33,7 +33,7 @@ jobs:
           owner: "ralexstokes"
           repository: "eth-testnet-runner"
 
-      - name: Download geth binary
+      - name: Fetch geth binary
         run: |
           cd eth-testnet-runner
           mkdir bin
@@ -41,6 +41,13 @@ jobs:
           tar -xvf geth-linux-amd64-1.11.3-5ed08c47.tar.gz
           cd geth-linux-amd64-1.11.3-5ed08c47
           cp geth ../bin
+
+      - name: Fetch lighthouse binary
+        run: |
+          cd eth-testnet-runner
+          wget https://github.com/sigp/lighthouse/releases/download/v3.5.1/lighthouse-v3.5.1-x86_64-apple-darwin-portable.tar.gz -O ./lighthouse-v3.5.1-x86_64-apple-darwin-portable.tar.gz
+          tar -xvf lighthouse-v3.5.1-x86_64-apple-darwin-portable.tar.gz
+          cp lighthouse ./bin
 
       - name: Install go
         uses: actions/setup-go@v3
@@ -71,18 +78,6 @@ jobs:
 
       - name: Install protc (lighthouse dependency)
         run: sudo apt-get install protobuf-compiler
-
-      - name: Clone lighthouse repository and build
-        uses: GuillaumeFalourd/clone-github-repo-action@v2
-        with:
-          owner: "sigp"
-          repository: "lighthouse"
-
-      - name: build lighthouse and move binary to eth-testnet-runner bin folder
-        run: |
-          cd lighthouse
-          cargo build --release
-          cp ./target/release/lighthouse ../eth-testnet-runner/bin
 
       - name: install just
         run: |
