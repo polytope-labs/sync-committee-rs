@@ -87,19 +87,19 @@ jobs:
           just create-config
 
       - name: run generate-keys
-          just generate-keys
+        run: just generate-keys
 
       - name: run init-geth
-          just init-geth
+        run: just init-geth
 
       - name: run run-el
-          just run-el
+        run: just run-el
 
       - name: run run-cl
-          just run-cl
+        run: just run-cl
 
       - name: run run-validator
-          just run-validator
+        run: just run-validator
 
       - name: Run all tests
         run: |
