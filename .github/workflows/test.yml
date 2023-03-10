@@ -79,16 +79,23 @@ jobs:
       - name: install just
         run: |
           cargo install just
+          cd eth-testnet-runner
           just create-config &
 
       - name: run generate-keys
-        run: just generate-keys
+        run: |
+          cd eth-testnet-runner
+          just generate-keys
 
       - name: run init-geth
-        run: just init-geth
+        run: |
+          cd eth-testnet-runner
+          just init-geth
 
       - name: run run-el
-        run: just run-el &
+        run: |
+          cd eth-testnet-runner
+          just run-el &
 
       - name: Set MIN_GENESIS_TIME to 1 with sed
         run: |
@@ -101,10 +108,14 @@ jobs:
           sed -i 's/^MIN_GENESIS_TIME:.*/MIN_GENESIS_TIME: 1/' config.yaml
 
       - name: run run-cl
-        run: just run-cl &
+        run: |
+          cd eth-testnet-runner
+          just run-cl &
 
       - name: run run-validator
-        run: just run-validator &
+        run: |
+          cd eth-testnet-runner
+          just run-validator &
 
       - name: Run all tests
         run: |
