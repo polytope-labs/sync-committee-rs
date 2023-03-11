@@ -76,6 +76,11 @@ jobs:
           toolchain: stable
           override: true
 
+      - name: Set UID env variable needed by create-config in the next step
+        run: |
+          echo User ID [UID]: $(id -u)
+          UID=$(id -u)
+
       - name: install just
         run: |
           cargo install just
