@@ -23,6 +23,9 @@ jobs:
   test:
     name: Test Suite
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Checkout sources
         uses: actions/checkout@master
@@ -84,7 +87,6 @@ jobs:
 
       - name: install just
         run: |
-          !#/bin/bash
           cargo install just
           cd eth-testnet-runner
           just create-config &
