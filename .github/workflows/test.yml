@@ -93,6 +93,7 @@ jobs:
           cargo install just
 
       - name: run create-config
+        run: |
           cd eth-testnet-runner
           just create-config &
 
