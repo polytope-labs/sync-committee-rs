@@ -95,7 +95,7 @@ jobs:
       - name: run create-config
         run: |
           cd eth-testnet-runner
-          just create-config &
+          just create-config --evaluate &
 
       - name: run generate-keys
         run: |
