@@ -23,9 +23,9 @@ jobs:
   test:
     name: Test Suite
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
+    # defaults:
+    #   run:
+    #     shell: bash
     steps:
       - name: Checkout sources
         uses: actions/checkout@master
@@ -84,6 +84,9 @@ jobs:
       #     !#/bin/bash
       #     echo User ID [UID]: $(id -u)
       #     sudo usermod -u $(id -u) $(whoami)
+
+      - name: echo UID
+        run: echo $UID
 
       - name: install just
         run: |
