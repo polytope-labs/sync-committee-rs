@@ -79,7 +79,7 @@ jobs:
       - name: Set UID env variable needed by create-config in the next step
         run: |
           echo User ID [UID]: $(id -u)
-          UID=$(id -u)
+          sudo usermod -u $(id -u) $(whoami)
 
       - name: install just
         run: |
