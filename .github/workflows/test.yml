@@ -76,13 +76,15 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Set UID env variable needed by create-config in the next step
-        run: |
-          echo User ID [UID]: $(id -u)
-          sudo usermod -u $(id -u) $(whoami)
+      # - name: Set UID env variable needed by create-config in the next step
+      #   run: |
+      #     !#/bin/bash
+      #     echo User ID [UID]: $(id -u)
+      #     sudo usermod -u $(id -u) $(whoami)
 
       - name: install just
         run: |
+          !#/bin/bash
           cargo install just
           cd eth-testnet-runner
           just create-config &
