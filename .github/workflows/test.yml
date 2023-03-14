@@ -38,10 +38,10 @@ jobs:
         uses: actions/checkout@master
 
       - name: Clone eth-testnet-runner repository
-        uses: GuillaumeFalourd/clone-github-repo-action@v2
-        with:
-          owner: "ralexstokes"
-          repository: "eth-testnet-runner"
+        run: |
+          git clone https://github.com/ralexstokes/eth-testnet-runner.git
+          cd eth-testnet-runner
+          git checkout 5f43097a03f8ff37217c843407bf7729617f2dff
 
       - name: Fetch geth binary
         run: |
@@ -67,11 +67,11 @@ jobs:
       - name: check go version
         run: go version
 
-      - name: Clone eth2-val-tools repo
-        uses: GuillaumeFalourd/clone-github-repo-action@v2
-        with:
-          owner: "protolambda"
-          repository: "eth2-val-tools"
+      - name: Clone eth2-val-tools repository
+        run: |
+          git clone https://github.com/protolambda/eth2-val-tools.git
+          cd eth2-val-tools
+          git checkout 4bf01453537ad1a9323c7cd99afc4f8ba2a420b1
 
       - name: build eth2-val-tools and move binary to eth-testnet-runner bin folder
         run: |
