@@ -128,12 +128,7 @@ jobs:
 
       - name: Set MIN_GENESIS_TIME to 1 with sed
         run: |
-          ls eth-testnet-runner/
-          cd eth-testnet-runner/
-          ls config-data/
-          cd config-data/
-          ls custom_config_data/
-          cd custom_config_data/
+          cd eth-testnet-runner/config-data/custom_config_data/
           sed -i 's/^MIN_GENESIS_TIME:.*/MIN_GENESIS_TIME: 1/' config.yaml
 
       - name: run run-cl
