@@ -142,6 +142,17 @@ jobs:
           cd eth-testnet-runner
           just run-el &
 
+          HOST="localhost"
+          PORT="8545"
+
+          echo "Trying to connect to ${HOST}:${PORT}..."
+
+          while ! nc -z $HOST $PORT; do
+            sleep 0.5
+          done
+
+          echo "${HOST}:${PORT} is ready for requests."
+
       - name: Set MIN_GENESIS_TIME to 1 with sed
         run: |
           cd eth-testnet-runner/config-data/custom_config_data/
