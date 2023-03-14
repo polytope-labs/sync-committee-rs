@@ -32,10 +32,10 @@ jobs:
       - name: echo UID 1
         run: |
           echo $UID
-          echo "::set-env name=TUID::$UID"
+          echo "TUID=$UID" >> $GITHUB_ENV
       
       - name: print set TUID
-        run: echo 'the TUID is ' $TUID 
+        run: echo 'the TUID is ' "${{ env.TUID }}"
 
       - name: Checkout sources
         uses: actions/checkout@master
