@@ -91,6 +91,13 @@ jobs:
       - name: install just
         run: |
           cargo install just
+      
+      # Makes $UID available to the justfile
+      - name: set UID env variable as a local file variable 
+        run: |
+          cd eth-testnet-runner
+          sed -i 's/$UID/{{UID}}/' justfile
+          sed -i 's/^NOW := `date +%s`/NOW := `date +%s`\nUID := "$UID"/' justfile
 
       - name: run create-config
         run: |
