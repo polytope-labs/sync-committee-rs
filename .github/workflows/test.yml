@@ -105,6 +105,11 @@ jobs:
           sed -i 's/BELLATRIX_FORK_VERSION=.*/BELLATRIX_FORK_VERSION="0x02000000"/' values.env
           sed -i 's/CAPELLA_FORK_VERSION=.*/CAPELLA_FORK_VERSION="0x03000000"/' values.env
           sed -i 's/EIP4844_FORK_VERSION=.*/EIP4844_FORK_VERSION="0x04000000"/' values.env
+      
+      - name: remove tty flag from docker command in create-config recipe
+        run: |
+          cd eth-testnet-runner
+          sed -i 's/-it/-i/' justfile
 
       - name: run create-config
         run: |
