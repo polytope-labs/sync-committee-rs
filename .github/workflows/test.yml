@@ -163,6 +163,17 @@ jobs:
           cd eth-testnet-runner
           just run-cl &
 
+          HOST="localhost"
+          PORT="5052"
+
+          echo "Trying to connect to ${HOST}:${PORT}..."
+
+          while ! nc -z $HOST $PORT; do
+            sleep 0.5
+          done
+
+          echo "${HOST}:${PORT} is ready for requests."
+
       - name: run run-validator
         run: |
           cd eth-testnet-runner
