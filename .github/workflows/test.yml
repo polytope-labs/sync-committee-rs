@@ -26,9 +26,16 @@ jobs:
     # defaults:
     #   run:
     #     shell: bash
+    env:
+      TUID: 123
     steps:
       - name: echo UID 1
-        run: echo $UID
+        run: |
+          echo $UID
+          echo "::set-env name=TUID::$UID"
+      
+      - name: print set TUID
+        run: echo 'the TUID is ' $TUID 
 
       - name: Checkout sources
         uses: actions/checkout@master
