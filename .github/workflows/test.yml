@@ -105,12 +105,12 @@ jobs:
 
       - name: modify testnet config values
         run: |
-          echo $UID
-          sed -i 's/GENESIS_FORK_VERSION=.*/GENESIS_FORK_VERSION="0x00000000"/' ./testnet-config/values.env
-          sed -i 's/ALTAIR_FORK_VERSION=.*/ALTAIR_FORK_VERSION="0x01000000"/' ./testnet-config/values.env
-          sed -i 's/BELLATRIX_FORK_VERSION=.*/BELLATRIX_FORK_VERSION="0x02000000"/' ./testnet-config/values.env
-          sed -i 's/CAPELLA_FORK_VERSION=.*/CAPELLA_FORK_VERSION="0x03000000"/' ./testnet-config/values.env
-          sed -i 's/EIP4844_FORK_VERSION=.*/EIP4844_FORK_VERSION="0x04000000"/' ./testnet-config/values.env
+          cd eth-testnet-runner/testnet-config
+          sed -i 's/GENESIS_FORK_VERSION=.*/GENESIS_FORK_VERSION="0x00000000"/' values.env
+          sed -i 's/ALTAIR_FORK_VERSION=.*/ALTAIR_FORK_VERSION="0x01000000"/' values.env
+          sed -i 's/BELLATRIX_FORK_VERSION=.*/BELLATRIX_FORK_VERSION="0x02000000"/' values.env
+          sed -i 's/CAPELLA_FORK_VERSION=.*/CAPELLA_FORK_VERSION="0x03000000"/' values.env
+          sed -i 's/EIP4844_FORK_VERSION=.*/EIP4844_FORK_VERSION="0x04000000"/' values.env
 
       - name: run create-config
         run: |
