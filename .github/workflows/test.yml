@@ -27,11 +27,14 @@ jobs:
     #   run:
     #     shell: bash
     steps:
-      - name: echo UID
+      - name: echo UID 1
         run: echo $UID
 
       - name: Checkout sources
         uses: actions/checkout@master
+      
+      - name: echo UID 2
+        run: echo $UID
 
       - name: Clone eth-testnet-runner repository
         uses: GuillaumeFalourd/clone-github-repo-action@v2
@@ -102,6 +105,7 @@ jobs:
 
       - name: modify testnet config values
         run: |
+          echo $UID
           sed -i 's/GENESIS_FORK_VERSION=.*/GENESIS_FORK_VERSION="0x00000000"/' ./testnet-config/values.env
           sed -i 's/ALTAIR_FORK_VERSION=.*/ALTAIR_FORK_VERSION="0x01000000"/' ./testnet-config/values.env
           sed -i 's/BELLATRIX_FORK_VERSION=.*/BELLATRIX_FORK_VERSION="0x02000000"/' ./testnet-config/values.env
