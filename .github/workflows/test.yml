@@ -29,19 +29,13 @@ jobs:
     env:
       TUID: 123
     steps:
-      - name: echo UID 1
+      - name: set UID env
         run: |
           echo $UID
           echo "TUID=$UID" >> $GITHUB_ENV
-      
-      - name: print set TUID
-        run: echo 'the TUID is ' "${{ env.TUID }}"
 
       - name: Checkout sources
         uses: actions/checkout@master
-      
-      - name: echo UID 2
-        run: echo $UID
 
       - name: Clone eth-testnet-runner repository
         uses: GuillaumeFalourd/clone-github-repo-action@v2
@@ -91,7 +85,6 @@ jobs:
           cd eth-testnet-runner
           sed -i 's/$UID/{{UID}}/' justfile
           sed -i 's/^NOW := `date +%s`/NOW := `date +%s`\nUID := "${{ env.TUID }}"/' justfile
-          cat justfile
 
       - name: Install rust stable toolchain
         uses: actions-rs/toolchain@v1
@@ -99,12 +92,6 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-
-      # - name: Set UID env variable needed by create-config in the next step
-      #   run: |
-      #     !#/bin/bash
-      #     echo User ID [UID]: $(id -u)
-      #     sudo usermod -u $(id -u) $(whoami)
 
       - name: install just
         run: |
