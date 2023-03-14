@@ -116,6 +116,17 @@ jobs:
           cd eth-testnet-runner
           just create-config &
 
+          HOST="localhost"
+          PORT="8000"
+
+          echo "Trying to connect to ${HOST}:${PORT}..."
+
+          while ! nc -z $HOST $PORT; do
+            sleep 0.5
+          done
+
+          echo "${HOST}:${PORT} is ready for requests."
+
       - name: run generate-keys
         run: |
           cd eth-testnet-runner
