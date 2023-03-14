@@ -164,7 +164,7 @@ jobs:
           just run-cl &
 
           HOST="localhost"
-          PORT="5052"
+          PORT="9000"
 
           echo "Trying to connect to ${HOST}:${PORT}..."
 
