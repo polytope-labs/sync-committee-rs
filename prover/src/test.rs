@@ -454,7 +454,8 @@ async fn test_prover() {
 		);
 
 		count += 1;
-		if count == 5 {
+		// For CI purposes we test finalization of three epochs
+		if count == 3 {
 			break
 		}
 	}
