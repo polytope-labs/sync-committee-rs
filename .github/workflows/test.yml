@@ -55,8 +55,8 @@ jobs:
       - name: Fetch lighthouse binary
         run: |
           cd eth-testnet-runner
-          wget https://github.com/sigp/lighthouse/releases/download/v3.5.1/lighthouse-v3.5.1-x86_64-unknown-linux-gnu.tar.gz -O ./lighthouse-v3.5.1-x86_64-unknown-linux-gnu.tar.gz
-          tar -xvf lighthouse-v3.5.1-x86_64-unknown-linux-gnu.tar.gz
+          wget https://github.com/sigp/lighthouse/releases/download/v3.5.1/lighthouse-v3.5.1-x86_64-unknown-linux-gnu-portable.tar.gz -O ./lighthouse-v3.5.1-x86_64-unknown-linux-gnu-portable.tar.gz
+          tar -xvf lighthouse-v3.5.1-x86_64-unknown-linux-gnu-portable.tar.gz
           cp lighthouse ./bin
 
       - name: Install go
