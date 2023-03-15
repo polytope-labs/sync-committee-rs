@@ -120,11 +120,12 @@ jobs:
         run: |
           cd eth-testnet-runner
           just generate-keys
+          cd config-data/custom_config_data
+          sed -i 's/shanghaiTime:.*/shanghaiTime: 167119236847838392/' genesis.json
 
       - name: run init-geth
         run: |
           cd eth-testnet-runner
-          sed -i 's/shanghaiTime:.*/shanghaiTime: 167119236847838392/' genesis.json
           just init-geth
 
       - name: run run-el
