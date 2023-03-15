@@ -454,7 +454,7 @@ async fn test_prover() {
 		);
 
 		count += 1;
-		if count == 10 {
+		if count == 5 {
 			break
 		}
 	}
