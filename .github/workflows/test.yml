@@ -114,7 +114,7 @@ jobs:
       - name: run create-config
         run: |
           cd eth-testnet-runner
-          just create-config
+          just create-config &
           ./scripts/wait_for_tcp_port_opening.sh localhost 8000
           sed -i 's/shanghaiTime:.*/shanghaiTime: 167119236847838392/' genesis.json
 
@@ -131,7 +131,7 @@ jobs:
       - name: run run-el
         run: |
           cd eth-testnet-runner
-          just run-el 
+          just run-el &
           ./scripts/wait_for_tcp_port_opening.sh localhost 8545
 
       - name: Set MIN_GENESIS_TIME to 1 with sed
@@ -142,13 +142,13 @@ jobs:
       - name: run run-cl
         run: |
           cd eth-testnet-runner
-          just run-cl
+          just run-cl &
           ./scripts/wait_for_tcp_port_opening.sh localhost 5052
 
       - name: run run-validator
         run: |
           cd eth-testnet-runner
-          just run-validator
+          just run-validator &
           ./scripts/wait_for_tcp_port_opening.sh localhost 5062
 
       - name: Run all tests
