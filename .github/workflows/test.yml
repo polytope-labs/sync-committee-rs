@@ -43,6 +43,18 @@ jobs:
           cd eth-testnet-runner
           git checkout 5f43097a03f8ff37217c843407bf7729617f2dff
 
+      - name: Install rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Install protoc
+        run: |
+          sudo apt update
+          sudo apt install protobuf-compiler
+
       - name: Fetch geth binary
         run: |
           cd eth-testnet-runner
@@ -52,7 +64,7 @@ jobs:
           cd geth-linux-amd64-1.11.3-5ed08c47
           cp geth ../bin
 
-      - name: Fetch lighthouse binary
+      - name: Build lighthouse from source
         run: |
           cd eth-testnet-runner
           git clone https://github.com/sigp/lighthouse.git
@@ -88,13 +100,6 @@ jobs:
           cd eth-testnet-runner
           sed -i 's/$UID/{{UID}}/' justfile
           sed -i 's/^NOW := `date +%s`/NOW := `date +%s`\nUID := "${{ env.TUID }}"/' justfile
-
-      - name: Install rust stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
 
       - name: install just
         run: |
