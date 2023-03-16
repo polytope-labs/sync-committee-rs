@@ -24,7 +24,6 @@ const NODE_URL: &'static str = "http://localhost:5052";
 #[cfg(test)]
 #[allow(non_snake_case)]
 #[actix_rt::test]
-#[ignore]
 async fn fetch_block_header_works() {
 	let sync_committee_prover = SyncCommitteeProver::new(NODE_URL.to_string());
 	let block_header = sync_committee_prover.fetch_header("head").await;
@@ -34,7 +33,6 @@ async fn fetch_block_header_works() {
 #[cfg(test)]
 #[allow(non_snake_case)]
 #[actix_rt::test]
-#[ignore]
 async fn fetch_block_works() {
 	let sync_committee_prover = SyncCommitteeProver::new(NODE_URL.to_string());
 	let block = sync_committee_prover.fetch_block("head").await;
@@ -44,7 +42,6 @@ async fn fetch_block_works() {
 #[cfg(test)]
 #[allow(non_snake_case)]
 #[actix_rt::test]
-#[ignore]
 async fn fetch_sync_committee_works() {
 	let sync_committee_prover = SyncCommitteeProver::new(NODE_URL.to_string());
 	let block = sync_committee_prover.fetch_sync_committee("head").await;
@@ -54,7 +51,6 @@ async fn fetch_sync_committee_works() {
 #[cfg(test)]
 #[allow(non_snake_case)]
 #[actix_rt::test]
-#[ignore]
 async fn fetch_validator_works() {
 	let sync_committee_prover = SyncCommitteeProver::new(NODE_URL.to_string());
 	let validator = sync_committee_prover.fetch_validator("head", "48").await;
@@ -74,17 +70,15 @@ async fn fetch_processed_sync_committee_works() {
 #[cfg(test)]
 #[allow(non_snake_case)]
 #[actix_rt::test]
-#[ignore]
 async fn fetch_beacon_state_works() {
 	let sync_committee_prover = SyncCommitteeProver::new(NODE_URL.to_string());
-	let beacon_state = sync_committee_prover.fetch_beacon_state("genesis").await;
+	let beacon_state = sync_committee_prover.fetch_beacon_state("head").await;
 	assert!(beacon_state.is_ok());
 }
 
 #[cfg(test)]
 #[allow(non_snake_case)]
 #[actix_rt::test]
-#[ignore]
 async fn state_root_and_block_header_root_matches() {
 	let sync_committee_prover = SyncCommitteeProver::new(NODE_URL.to_string());
 	let mut beacon_state = sync_committee_prover.fetch_beacon_state("head").await.unwrap();
