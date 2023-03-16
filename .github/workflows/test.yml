@@ -56,8 +56,9 @@ jobs:
         run: |
           cd eth-testnet-runner
           git clone https://github.com/sigp/lighthouse.git
+          cd lighthouse
           git checkout 38514c07f222ff7783834c48cf5c0a6ee7f346d0
-          cd lighthouse/lighthouse
+          cd lighthouse
           cargo build --release
           mv target/release/lighthouse ../../bin
 
