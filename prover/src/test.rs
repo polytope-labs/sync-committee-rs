@@ -6,13 +6,10 @@ use sync_committee_primitives::{
 };
 
 use ethereum_consensus::{
-	altair::Checkpoint, bellatrix::compute_domain, primitives::Root, signing::compute_signing_root,
+	bellatrix::compute_domain, primitives::Root, signing::compute_signing_root,
 	state_transition::Context,
 };
-use ssz_rs::{
-	calculate_multi_merkle_root, get_generalized_index, is_valid_merkle_branch, GeneralizedIndex,
-	Merkleized, SszVariableOrIndex,
-};
+use ssz_rs::{calculate_multi_merkle_root, is_valid_merkle_branch, GeneralizedIndex, Merkleized};
 use std::time::Duration;
 use sync_committee_primitives::{
 	types::{AncestorBlock, FinalityProof, DOMAIN_SYNC_COMMITTEE, GENESIS_VALIDATORS_ROOT},
