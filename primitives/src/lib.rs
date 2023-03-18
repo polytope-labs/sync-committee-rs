@@ -3,6 +3,6 @@
 #[warn(unused_variables)]
 extern crate alloc;
 
+pub mod derived_types;
 pub mod types;
 pub mod util;
-pub mod derived_types;

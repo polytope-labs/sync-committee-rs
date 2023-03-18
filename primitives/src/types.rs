@@ -4,7 +4,6 @@ use ethereum_consensus::{
 	domains::DomainType,
 	primitives::{Hash32, Slot},
 };
-use codec::{Encode, Decode};
 
 pub const DOMAIN_SYNC_COMMITTEE: DomainType = DomainType::SyncCommittee;
 pub const FINALIZED_ROOT_INDEX: u64 = 52;
