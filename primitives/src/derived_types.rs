@@ -20,9 +20,9 @@ pub struct LightClientState {
 pub struct BeaconBlockHeader {
     pub slot: u64,
     pub proposer_index: u64,
-    pub parent_root: Root,
-    pub state_root: Root,
-    pub body_root: Root,
+    pub parent_root: [u8; 32],
+    pub state_root: [u8; 32],
+    pub body_root: [u8; 32],
 }
 
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, Default)]
@@ -48,9 +48,9 @@ impl From<bellatrix::BeaconBlockHeader> for BeaconBlockHeader {
         BeaconBlockHeader {
             slot: beacon_block_header.slot,
             proposer_index: beacon_block_header.proposer_index as u64,
-            parent_root: beacon_block_header.parent_root,
-            state_root: beacon_block_header.state_root,
-            body_root: beacon_block_header.body_root
+            parent_root: beacon_block_header.parent_root.as_bytes().try_into().unwrap(),
+            state_root: beacon_block_header.state_root.as_bytes().try_into().unwrap(),
+            body_root: beacon_block_header.body_root.as_bytes().try_into().unwrap()
         }
     }
 }
