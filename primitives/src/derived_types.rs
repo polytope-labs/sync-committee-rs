@@ -3,6 +3,12 @@ use codec::{Decode, Encode};
 use ethereum_consensus::{bellatrix, primitives::Root};
 use ssz_rs::Node;
 
+#[derive(Debug)]
+pub enum Error {
+	EmptyAggregate,
+	EncodingError { provided: usize, expected: usize },
+}
+
 /// Minimum state required by the light client to validate new sync committee attestations
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, Default)]
 pub struct LightClientState {
@@ -15,16 +21,17 @@ pub struct LightClientState {
 	pub next_sync_committee: SyncCommittee,
 }
 
-impl<const SYNC_COMMITTEE_SIZE: usize> From<types::LightClientState<SYNC_COMMITTEE_SIZE>>
+impl<const SYNC_COMMITTEE_SIZE: usize> TryFrom<types::LightClientState<SYNC_COMMITTEE_SIZE>>
 	for LightClientState
 {
-	fn from(state: types::LightClientState<SYNC_COMMITTEE_SIZE>) -> Self {
-		LightClientState {
-			finalized_header: state.finalized_header.into(),
+	type Error = Error;
+	fn try_from(state: types::LightClientState<SYNC_COMMITTEE_SIZE>) -> Result<Self, Self::Error> {
+		Ok(LightClientState {
+			finalized_header: state.finalized_header.try_into()?,
 			latest_finalized_epoch: state.latest_finalized_epoch,
-			current_sync_committee: state.current_sync_committee.into(),
-			next_sync_committee: state.next_sync_committee.into(),
-		}
+			current_sync_committee: state.current_sync_committee.try_into()?,
+			next_sync_committee: state.next_sync_committee.try_into()?,
+		})
 	}
 }
 
@@ -37,15 +44,29 @@ pub struct BeaconBlockHeader {
 	pub body_root: [u8; 32],
 }
 
-impl From<bellatrix::BeaconBlockHeader> for BeaconBlockHeader {
-	fn from(beacon_block_header: bellatrix::BeaconBlockHeader) -> Self {
-		BeaconBlockHeader {
+impl TryFrom<bellatrix::BeaconBlockHeader> for BeaconBlockHeader {
+	type Error = Error;
+
+	fn try_from(beacon_block_header: bellatrix::BeaconBlockHeader) -> Result<Self, Self::Error> {
+		Ok(BeaconBlockHeader {
 			slot: beacon_block_header.slot,
 			proposer_index: beacon_block_header.proposer_index as u64,
-			parent_root: beacon_block_header.parent_root.as_bytes().try_into().unwrap(),
-			state_root: beacon_block_header.state_root.as_bytes().try_into().unwrap(),
-			body_root: beacon_block_header.body_root.as_bytes().try_into().unwrap(),
-		}
+			parent_root: beacon_block_header
+				.parent_root
+				.as_bytes()
+				.try_into()
+				.expect("Invalid Node bytes"),
+			state_root: beacon_block_header
+				.state_root
+				.as_bytes()
+				.try_into()
+				.expect("Invalid Node bytes"),
+			body_root: beacon_block_header
+				.body_root
+				.as_bytes()
+				.try_into()
+				.expect("Invalid Node bytes"),
+		})
 	}
 }
 
@@ -55,18 +76,22 @@ pub struct SyncCommittee {
 	pub aggregate_public_key: Vec<u8>,
 }
 
-impl<const SYNC_COMMITTEE_SIZE: usize> From<bellatrix::SyncCommittee<SYNC_COMMITTEE_SIZE>>
+impl<const SYNC_COMMITTEE_SIZE: usize> TryFrom<bellatrix::SyncCommittee<SYNC_COMMITTEE_SIZE>>
 	for SyncCommittee
 {
-	fn from(sync_committee: bellatrix::SyncCommittee<SYNC_COMMITTEE_SIZE>) -> Self {
-		SyncCommittee {
+	type Error = Error;
+
+	fn try_from(
+		sync_committee: bellatrix::SyncCommittee<SYNC_COMMITTEE_SIZE>,
+	) -> Result<Self, Self::Error> {
+		Ok(SyncCommittee {
 			public_keys: sync_committee
 				.public_keys
 				.iter()
 				.map(|public_key| public_key.to_vec())
 				.collect(),
 			aggregate_public_key: sync_committee.aggregate_public_key.to_vec(),
-		}
+		})
 	}
 }
 
@@ -90,32 +115,37 @@ pub struct LightClientUpdate {
 	pub ancestor_blocks: Vec<AncestorBlock>,
 }
 
-impl<const SYNC_COMMITTEE_SIZE: usize> From<types::LightClientUpdate<SYNC_COMMITTEE_SIZE>>
+impl<const SYNC_COMMITTEE_SIZE: usize> TryFrom<types::LightClientUpdate<SYNC_COMMITTEE_SIZE>>
 	for LightClientUpdate
 {
-	fn from(update: types::LightClientUpdate<SYNC_COMMITTEE_SIZE>) -> Self {
+	type Error = Error;
+	fn try_from(
+		update: types::LightClientUpdate<SYNC_COMMITTEE_SIZE>,
+	) -> Result<Self, Self::Error> {
 		let sync_committee_update_option: Option<SyncCommitteeUpdate>;
 
 		match update.sync_committee_update {
 			Some(sync_committee_update) =>
-				sync_committee_update_option = Some(sync_committee_update.into()),
+				sync_committee_update_option = Some(sync_committee_update.try_into()?),
 
 			None => sync_committee_update_option = None,
 		}
-		LightClientUpdate {
-			attested_header: update.attested_header.into(),
+		Ok(LightClientUpdate {
+			attested_header: update.attested_header.try_into()?,
 			sync_committee_update: sync_committee_update_option,
-			finalized_header: update.finalized_header.into(),
-			execution_payload: update.execution_payload.into(),
-			finality_proof: update.finality_proof.into(),
-			sync_aggregate: update.sync_aggregate.into(),
+			finalized_header: update.finalized_header.try_into()?,
+			execution_payload: update.execution_payload.try_into()?,
+			finality_proof: update.finality_proof.try_into()?,
+			sync_aggregate: update.sync_aggregate.try_into()?,
 			signature_slot: update.signature_slot,
 			ancestor_blocks: update
 				.ancestor_blocks
 				.iter()
-				.map(|ancestor_block| ancestor_block.clone().into())
+				.map(|ancestor_block| {
+					ancestor_block.clone().try_into().expect("Error converting ancestor block")
+				})
 				.collect(),
-		}
+		})
 	}
 }
 
@@ -127,18 +157,22 @@ pub struct SyncCommitteeUpdate {
 	pub next_sync_committee_branch: Vec<Vec<u8>>,
 }
 
-impl<const SYNC_COMMITTEE_SIZE: usize> From<types::SyncCommitteeUpdate<SYNC_COMMITTEE_SIZE>>
+impl<const SYNC_COMMITTEE_SIZE: usize> TryFrom<types::SyncCommitteeUpdate<SYNC_COMMITTEE_SIZE>>
 	for SyncCommitteeUpdate
 {
-	fn from(sync_committee_update: types::SyncCommitteeUpdate<SYNC_COMMITTEE_SIZE>) -> Self {
-		SyncCommitteeUpdate {
-			next_sync_committee: sync_committee_update.next_sync_committee.into(),
+	type Error = Error;
+
+	fn try_from(
+		sync_committee_update: types::SyncCommitteeUpdate<SYNC_COMMITTEE_SIZE>,
+	) -> Result<Self, Self::Error> {
+		Ok(SyncCommitteeUpdate {
+			next_sync_committee: sync_committee_update.next_sync_committee.try_into()?,
 			next_sync_committee_branch: sync_committee_update
 				.next_sync_committee_branch
 				.iter()
 				.map(|hash| hash.to_vec())
 				.collect(),
-		}
+		})
 	}
 }
 
@@ -157,9 +191,12 @@ pub struct ExecutionPayloadProof {
 	pub timestamp: u64,
 }
 
-impl From<types::ExecutionPayloadProof> for ExecutionPayloadProof {
-	fn from(execution_payload_proof: types::ExecutionPayloadProof) -> Self {
-		ExecutionPayloadProof {
+impl TryFrom<types::ExecutionPayloadProof> for ExecutionPayloadProof {
+	type Error = Error;
+	fn try_from(
+		execution_payload_proof: types::ExecutionPayloadProof,
+	) -> Result<Self, Self::Error> {
+		Ok(ExecutionPayloadProof {
 			state_root: execution_payload_proof.state_root.to_vec(),
 			block_number: execution_payload_proof.block_number,
 			multi_proof: execution_payload_proof
@@ -173,7 +210,7 @@ impl From<types::ExecutionPayloadProof> for ExecutionPayloadProof {
 				.map(|branch| branch.to_vec())
 				.collect(),
 			timestamp: execution_payload_proof.timestamp,
-		}
+		})
 	}
 }
 
@@ -185,16 +222,17 @@ pub struct FinalityProof {
 	pub finality_branch: Vec<Vec<u8>>,
 }
 
-impl From<types::FinalityProof> for FinalityProof {
-	fn from(finality_proof: types::FinalityProof) -> Self {
-		FinalityProof {
+impl TryFrom<types::FinalityProof> for FinalityProof {
+	type Error = Error;
+	fn try_from(finality_proof: types::FinalityProof) -> Result<Self, Self::Error> {
+		Ok(FinalityProof {
 			epoch: finality_proof.epoch,
 			finality_branch: finality_proof
 				.finality_branch
 				.iter()
 				.map(|branch| branch.to_vec())
 				.collect(),
-		}
+		})
 	}
 }
 
@@ -204,14 +242,17 @@ pub struct SyncAggregate {
 	pub sync_committee_signature: Vec<u8>,
 }
 
-impl<const SYNC_COMMITTEE_SIZE: usize> From<bellatrix::SyncAggregate<SYNC_COMMITTEE_SIZE>>
+impl<const SYNC_COMMITTEE_SIZE: usize> TryFrom<bellatrix::SyncAggregate<SYNC_COMMITTEE_SIZE>>
 	for SyncAggregate
 {
-	fn from(sync_aggregate: bellatrix::SyncAggregate<SYNC_COMMITTEE_SIZE>) -> Self {
-		SyncAggregate {
+	type Error = Error;
+	fn try_from(
+		sync_aggregate: bellatrix::SyncAggregate<SYNC_COMMITTEE_SIZE>,
+	) -> Result<Self, Self::Error> {
+		Ok(SyncAggregate {
 			sync_committee_bits: sync_aggregate.sync_committee_bits.clone().to_bitvec().into_vec(),
 			sync_committee_signature: sync_aggregate.sync_committee_signature.clone().to_vec(),
-		}
+		})
 	}
 }
 
@@ -225,13 +266,14 @@ pub struct AncestorBlock {
 	pub ancestry_proof: AncestryProof,
 }
 
-impl From<types::AncestorBlock> for AncestorBlock {
-	fn from(ancestor_block: types::AncestorBlock) -> Self {
-		AncestorBlock {
-			header: ancestor_block.header.into(),
-			execution_payload: ancestor_block.execution_payload.into(),
-			ancestry_proof: ancestor_block.ancestry_proof.into(),
-		}
+impl TryFrom<types::AncestorBlock> for AncestorBlock {
+	type Error = Error;
+	fn try_from(ancestor_block: types::AncestorBlock) -> Result<Self, Self::Error> {
+		Ok(AncestorBlock {
+			header: ancestor_block.header.try_into()?,
+			execution_payload: ancestor_block.execution_payload.try_into()?,
+			ancestry_proof: ancestor_block.ancestry_proof.try_into()?,
+		})
 	}
 }
 
@@ -245,16 +287,17 @@ pub struct BlockRootsProof {
 	pub block_header_branch: Vec<Vec<u8>>,
 }
 
-impl From<types::BlockRootsProof> for BlockRootsProof {
-	fn from(beacon_block_header: types::BlockRootsProof) -> Self {
-		BlockRootsProof {
+impl TryFrom<types::BlockRootsProof> for BlockRootsProof {
+	type Error = Error;
+	fn try_from(beacon_block_header: types::BlockRootsProof) -> Result<Self, Self::Error> {
+		Ok(BlockRootsProof {
 			block_header_index: beacon_block_header.block_header_index,
 			block_header_branch: beacon_block_header
 				.block_header_branch
 				.iter()
 				.map(|hash| hash.to_vec())
 				.collect(),
-		}
+		})
 	}
 }
 
@@ -285,12 +328,13 @@ pub enum AncestryProof {
 	},
 }
 
-impl From<types::AncestryProof> for AncestryProof {
-	fn from(ancestry_proof: types::AncestryProof) -> Self {
-		match ancestry_proof {
+impl TryFrom<types::AncestryProof> for AncestryProof {
+	type Error = Error;
+	fn try_from(ancestry_proof: types::AncestryProof) -> Result<Self, Self::Error> {
+		Ok(match ancestry_proof {
 			types::AncestryProof::BlockRoots { block_roots_proof, block_roots_branch } =>
 				AncestryProof::BlockRoots {
-					block_roots_proof: block_roots_proof.into(),
+					block_roots_proof: block_roots_proof.try_into()?,
 					block_roots_branch: block_roots_branch
 						.iter()
 						.map(|hash| hash.to_vec())
@@ -303,7 +347,7 @@ impl From<types::AncestryProof> for AncestryProof {
 				historical_roots_index,
 				historical_roots_branch,
 			} => AncestryProof::HistoricalRoots {
-				block_roots_proof: block_roots_proof.into(),
+				block_roots_proof: block_roots_proof.try_into()?,
 				historical_batch_proof: historical_batch_proof
 					.iter()
 					.map(|hash| hash.to_vec())
@@ -318,6 +362,6 @@ impl From<types::AncestryProof> for AncestryProof {
 					.map(|hash| hash.to_vec())
 					.collect(),
 			},
-		}
+		})
 	}
 }
