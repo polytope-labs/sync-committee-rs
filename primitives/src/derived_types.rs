@@ -152,7 +152,11 @@ impl<const SYNC_COMMITTEE_SIZE: usize> TryFrom<types::LightClientUpdate<SYNC_COM
 				.ancestor_blocks
 				.iter()
 				.map(|ancestor_block| {
-					ancestor_block.clone().try_into().map_err(|_| Error::InvalidNodeBytes).unwrap()
+					ancestor_block
+						.clone()
+						.try_into()
+						.map_err(|_| Error::ErrorConvertingAncestorBlock)
+						.unwrap()
 				})
 				.collect(),
 		})
