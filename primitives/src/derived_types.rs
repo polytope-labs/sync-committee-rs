@@ -1,12 +1,22 @@
 use crate::types;
 use codec::{Decode, Encode};
+use core::fmt::{Display, Formatter};
 use ethereum_consensus::{bellatrix, primitives::Root};
 use ssz_rs::Node;
 
 #[derive(Debug)]
 pub enum Error {
-	EmptyAggregate,
-	EncodingError { provided: usize, expected: usize },
+	InvalidNodeBytes,
+	ErrorConvertingAncestorBlock,
+}
+
+impl Display for Error {
+	fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+		match self {
+			Error::InvalidNodeBytes => write!(f, "Invalid node bytes",),
+			Error::ErrorConvertingAncestorBlock => write!(f, "Error deriving ancestor block",),
+		}
+	}
 }
 
 /// Minimum state required by the light client to validate new sync committee attestations
@@ -55,17 +65,17 @@ impl TryFrom<bellatrix::BeaconBlockHeader> for BeaconBlockHeader {
 				.parent_root
 				.as_bytes()
 				.try_into()
-				.expect("Invalid Node bytes"),
+				.map_err(|_| Error::InvalidNodeBytes)?,
 			state_root: beacon_block_header
 				.state_root
 				.as_bytes()
 				.try_into()
-				.expect("Invalid Node bytes"),
+				.map_err(|_| Error::InvalidNodeBytes)?,
 			body_root: beacon_block_header
 				.body_root
 				.as_bytes()
 				.try_into()
-				.expect("Invalid Node bytes"),
+				.map_err(|_| Error::InvalidNodeBytes)?,
 		})
 	}
 }
@@ -142,7 +152,7 @@ impl<const SYNC_COMMITTEE_SIZE: usize> TryFrom<types::LightClientUpdate<SYNC_COM
 				.ancestor_blocks
 				.iter()
 				.map(|ancestor_block| {
-					ancestor_block.clone().try_into().expect("Error converting ancestor block")
+					ancestor_block.clone().try_into().map_err(|_| Error::InvalidNodeBytes).unwrap()
 				})
 				.collect(),
 		})
