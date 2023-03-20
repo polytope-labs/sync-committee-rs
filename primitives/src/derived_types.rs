@@ -36,12 +36,7 @@ impl<const SYNC_COMMITTEE_SIZE: usize> TryFrom<types::LightClientState<SYNC_COMM
 {
 	type Error = Error;
 	fn try_from(state: types::LightClientState<SYNC_COMMITTEE_SIZE>) -> Result<Self, Self::Error> {
-		Ok(LightClientState {
-			finalized_header: state.finalized_header.try_into()?,
-			latest_finalized_epoch: state.latest_finalized_epoch,
-			current_sync_committee: state.current_sync_committee.try_into()?,
-			next_sync_committee: state.next_sync_committee.try_into()?,
-		})
+		construct_light_client_state(state)
 	}
 }
 
@@ -132,34 +127,7 @@ impl<const SYNC_COMMITTEE_SIZE: usize> TryFrom<types::LightClientUpdate<SYNC_COM
 	fn try_from(
 		update: types::LightClientUpdate<SYNC_COMMITTEE_SIZE>,
 	) -> Result<Self, Self::Error> {
-		let sync_committee_update_option: Option<SyncCommitteeUpdate>;
-
-		match update.sync_committee_update {
-			Some(sync_committee_update) =>
-				sync_committee_update_option = Some(sync_committee_update.try_into()?),
-
-			None => sync_committee_update_option = None,
-		}
-		Ok(LightClientUpdate {
-			attested_header: update.attested_header.try_into()?,
-			sync_committee_update: sync_committee_update_option,
-			finalized_header: update.finalized_header.try_into()?,
-			execution_payload: update.execution_payload.try_into()?,
-			finality_proof: update.finality_proof.try_into()?,
-			sync_aggregate: update.sync_aggregate.try_into()?,
-			signature_slot: update.signature_slot,
-			ancestor_blocks: update
-				.ancestor_blocks
-				.iter()
-				.map(|ancestor_block| {
-					ancestor_block
-						.clone()
-						.try_into()
-						.map_err(|_| Error::ErrorConvertingAncestorBlock)
-						.unwrap()
-				})
-				.collect(),
-		})
+		construct_light_client_update(update)
 	}
 }
 
@@ -378,4 +346,48 @@ impl TryFrom<types::AncestryProof> for AncestryProof {
 			},
 		})
 	}
+}
+
+fn construct_light_client_state<const SYNC_COMMITTEE_SIZE: usize>(
+	state: types::LightClientState<SYNC_COMMITTEE_SIZE>,
+) -> Result<LightClientState, Error> {
+	Ok(LightClientState {
+		finalized_header: state.finalized_header.try_into()?,
+		latest_finalized_epoch: state.latest_finalized_epoch,
+		current_sync_committee: state.current_sync_committee.try_into()?,
+		next_sync_committee: state.next_sync_committee.try_into()?,
+	})
+}
+
+fn construct_light_client_update<const SYNC_COMMITTEE_SIZE: usize>(
+	update: types::LightClientUpdate<SYNC_COMMITTEE_SIZE>,
+) -> Result<LightClientUpdate, Error> {
+	let sync_committee_update_option: Option<SyncCommitteeUpdate>;
+
+	match update.sync_committee_update {
+		Some(sync_committee_update) =>
+			sync_committee_update_option = Some(sync_committee_update.try_into()?),
+
+		None => sync_committee_update_option = None,
+	}
+	Ok(LightClientUpdate {
+		attested_header: update.attested_header.try_into()?,
+		sync_committee_update: sync_committee_update_option,
+		finalized_header: update.finalized_header.try_into()?,
+		execution_payload: update.execution_payload.try_into()?,
+		finality_proof: update.finality_proof.try_into()?,
+		sync_aggregate: update.sync_aggregate.try_into()?,
+		signature_slot: update.signature_slot,
+		ancestor_blocks: update
+			.ancestor_blocks
+			.iter()
+			.map(|ancestor_block| {
+				ancestor_block
+					.clone()
+					.try_into()
+					.map_err(|_| Error::ErrorConvertingAncestorBlock)
+					.unwrap()
+			})
+			.collect(),
+	})
 }

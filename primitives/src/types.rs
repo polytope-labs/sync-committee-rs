@@ -271,18 +271,7 @@ impl<const SYNC_COMMITTEE_SIZE: usize> TryFrom<derived_types::LightClientState>
 {
 	type Error = Error;
 	fn try_from(state: derived_types::LightClientState) -> Result<Self, Self::Error> {
-		let finalized_header = construct_beacon_header(state.finalized_header)?;
-
-		let current_sync_committee =
-			construct_sync_committee(state.current_sync_committee.clone())?;
-		let next_sync_committee = construct_sync_committee(state.next_sync_committee)?;
-
-		Ok(LightClientState {
-			finalized_header,
-			latest_finalized_epoch: state.latest_finalized_epoch,
-			current_sync_committee,
-			next_sync_committee,
-		})
+		construct_light_client_state(state)
 	}
 }
 
@@ -337,33 +326,7 @@ impl<const SYNC_COMMITTEE_SIZE: usize> TryFrom<derived_types::LightClientUpdate>
 {
 	type Error = Error;
 	fn try_from(derived_update: derived_types::LightClientUpdate) -> Result<Self, Self::Error> {
-		let sync_committee_update_option: Option<SyncCommitteeUpdate<SYNC_COMMITTEE_SIZE>>;
-
-		match derived_update.sync_committee_update {
-			Some(sync_committee_update) =>
-				sync_committee_update_option = Some(sync_committee_update.try_into()?),
-			None => sync_committee_update_option = None,
-		}
-		Ok(LightClientUpdate {
-			attested_header: construct_beacon_header(derived_update.attested_header)?,
-			sync_committee_update: sync_committee_update_option,
-			finalized_header: construct_beacon_header(derived_update.finalized_header)?,
-			execution_payload: derived_update.execution_payload.try_into()?,
-			finality_proof: derived_update.finality_proof.try_into()?,
-			sync_aggregate: construct_sync_aggregate(derived_update.sync_aggregate)?,
-			signature_slot: derived_update.signature_slot,
-			ancestor_blocks: derived_update
-				.ancestor_blocks
-				.iter()
-				.map(|ancestor_block| {
-					ancestor_block
-						.clone()
-						.try_into()
-						.map_err(|_| Error::ErrorConvertingAncestorBlock)
-						.unwrap()
-				})
-				.collect(),
-		})
+		construct_light_client_update(derived_update)
 	}
 }
 
@@ -426,4 +389,52 @@ fn construct_sync_aggregate<const SYNC_COMMITTEE_SIZE: usize>(
 	};
 
 	Ok(sync_aggregate)
+}
+
+fn construct_light_client_state<const SYNC_COMMITTEE_SIZE: usize>(
+	state: derived_types::LightClientState,
+) -> Result<LightClientState<SYNC_COMMITTEE_SIZE>, Error> {
+	let finalized_header = construct_beacon_header(state.finalized_header)?;
+
+	let current_sync_committee = construct_sync_committee(state.current_sync_committee.clone())?;
+	let next_sync_committee = construct_sync_committee(state.next_sync_committee)?;
+
+	Ok(LightClientState {
+		finalized_header,
+		latest_finalized_epoch: state.latest_finalized_epoch,
+		current_sync_committee,
+		next_sync_committee,
+	})
+}
+
+fn construct_light_client_update<const SYNC_COMMITTEE_SIZE: usize>(
+	derived_update: derived_types::LightClientUpdate,
+) -> Result<LightClientUpdate<SYNC_COMMITTEE_SIZE>, Error> {
+	let sync_committee_update_option: Option<SyncCommitteeUpdate<SYNC_COMMITTEE_SIZE>>;
+
+	match derived_update.sync_committee_update {
+		Some(sync_committee_update) =>
+			sync_committee_update_option = Some(sync_committee_update.try_into()?),
+		None => sync_committee_update_option = None,
+	}
+	Ok(LightClientUpdate {
+		attested_header: construct_beacon_header(derived_update.attested_header)?,
+		sync_committee_update: sync_committee_update_option,
+		finalized_header: construct_beacon_header(derived_update.finalized_header)?,
+		execution_payload: derived_update.execution_payload.try_into()?,
+		finality_proof: derived_update.finality_proof.try_into()?,
+		sync_aggregate: construct_sync_aggregate(derived_update.sync_aggregate)?,
+		signature_slot: derived_update.signature_slot,
+		ancestor_blocks: derived_update
+			.ancestor_blocks
+			.iter()
+			.map(|ancestor_block| {
+				ancestor_block
+					.clone()
+					.try_into()
+					.map_err(|_| Error::ErrorConvertingAncestorBlock)
+					.unwrap()
+			})
+			.collect(),
+	})
 }
