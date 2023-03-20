@@ -1,9 +1,31 @@
+use crate::derived_types;
 use alloc::vec::Vec;
+use core::fmt::{Display, Formatter};
 use ethereum_consensus::{
 	bellatrix::{BeaconBlockHeader, SyncAggregate, SyncCommittee},
 	domains::DomainType,
 	primitives::{Hash32, Slot},
 };
+use ssz_rs::Node;
+use ssz_rs::Vector;
+use ethereum_consensus::crypto::PublicKey;
+
+
+
+#[derive(Debug)]
+pub enum Error {
+	InvalidRoot,
+	InvalidPublicKey,
+}
+
+impl Display for Error {
+	fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+		match self {
+			Error::InvalidRoot => write!(f, "Invalid root",),
+			Error::InvalidPublicKey => write!(f, "Invalid public key",),
+		}
+	}
+}
 
 pub const DOMAIN_SYNC_COMMITTEE: DomainType = DomainType::SyncCommittee;
 pub const FINALIZED_ROOT_INDEX: u64 = 52;
@@ -109,6 +131,59 @@ pub struct LightClientState<const SYNC_COMMITTEE_SIZE: usize> {
 	// Sync committees corresponding to the finalized header
 	pub current_sync_committee: SyncCommittee<SYNC_COMMITTEE_SIZE>,
 	pub next_sync_committee: SyncCommittee<SYNC_COMMITTEE_SIZE>,
+}
+
+impl<const SYNC_COMMITTEE_SIZE: usize> TryFrom<derived_types::LightClientState>
+	for LightClientState<SYNC_COMMITTEE_SIZE>
+{
+	type Error = Error;
+	fn try_from(state: derived_types::LightClientState) -> Result<Self, Self::Error> {
+		let derived_header = state.finalized_header;
+
+		let finalized_header = BeaconBlockHeader {
+			slot: derived_header.slot,
+			proposer_index: derived_header.proposer_index as usize,
+			parent_root: Node::from_bytes(
+				derived_header.parent_root
+					.as_ref()
+					.try_into()
+					.map_err(|_| Error::InvalidRoot)?,
+			),
+			state_root: Node::from_bytes(
+				derived_header.state_root
+					.as_ref()
+					.try_into()
+					.map_err(|_| Error::InvalidRoot)?,
+			),
+			body_root: Node::from_bytes(
+				derived_header.body_root
+					.as_ref()
+					.try_into()
+					.map_err(|_| Error::InvalidRoot)?,
+			)
+		};
+
+		let derived_current_sync_committee = state.current_sync_committee;
+		let current_public_keys_vector:Vec<PublicKey> = derived_current_sync_committee.public_keys.iter().map(|public_key| PublicKey::try_from(public_key.as_slice()).map_err(|_| Error::InvalidPublicKey).unwrap()).collect();
+		let  current_sync_committee = SyncCommittee {
+			public_keys: Vector::try_from(current_public_keys_vector).unwrap(),
+			aggregate_public_key: PublicKey::try_from(derived_current_sync_committee.aggregate_public_key.as_slice()).map_err(|_| Error::InvalidPublicKey)?
+		};
+
+		let derived_next_sync_committee = state.next_sync_committee;
+		let next_public_keys_vector:Vec<PublicKey> = derived_next_sync_committee.public_keys.iter().map(|public_key| PublicKey::try_from(public_key.as_slice()).map_err(|_| Error::InvalidPublicKey).unwrap()).collect();
+		let  next_sync_committee = SyncCommittee {
+			public_keys: Vector::try_from(next_public_keys_vector).unwrap(),
+			aggregate_public_key: PublicKey::try_from(derived_next_sync_committee.aggregate_public_key.as_slice()).map_err(|_| Error::InvalidPublicKey)?
+		};
+
+		Ok(LightClientState {
+			finalized_header,
+			latest_finalized_epoch: state.latest_finalized_epoch,
+			current_sync_committee,
+			next_sync_committee,
+		})
+	}
 }
 
 /// Finalized header proof
