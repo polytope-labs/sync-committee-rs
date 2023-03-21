@@ -1,23 +1,15 @@
-use crate::types;
+use crate::{
+	error::Error,
+	helpers::{
+		to_codec_light_client_state, to_codec_light_client_update, to_no_codec_beacon_header,
+		to_no_codec_light_client_state, to_no_codec_light_client_update,
+		to_no_codec_sync_committee,
+	},
+	types,
+};
+use alloc::vec::Vec;
 use codec::{Decode, Encode};
-use core::fmt::{Display, Formatter};
-use ethereum_consensus::{bellatrix, primitives::Root};
-use ssz_rs::Node;
-
-#[derive(Debug)]
-pub enum Error {
-	InvalidNodeBytes,
-	ErrorConvertingAncestorBlock,
-}
-
-impl Display for Error {
-	fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-		match self {
-			Error::InvalidNodeBytes => write!(f, "Invalid node bytes",),
-			Error::ErrorConvertingAncestorBlock => write!(f, "Error deriving ancestor block",),
-		}
-	}
-}
+use ethereum_consensus::{bellatrix, primitives::Hash32};
 
 /// Minimum state required by the light client to validate new sync committee attestations
 #[derive(Debug, Encode, Decode, Clone, PartialEq, Eq, Default)]
@@ -36,7 +28,16 @@ impl<const SYNC_COMMITTEE_SIZE: usize> TryFrom<types::LightClientState<SYNC_COMM
 {
 	type Error = Error;
 	fn try_from(state: types::LightClientState<SYNC_COMMITTEE_SIZE>) -> Result<Self, Self::Error> {
-		construct_light_client_state(state)
+		to_codec_light_client_state(state)
+	}
+}
+
+impl<const SYNC_COMMITTEE_SIZE: usize> TryFrom<LightClientState>
+	for types::LightClientState<SYNC_COMMITTEE_SIZE>
+{
+	type Error = Error;
+	fn try_from(state: LightClientState) -> Result<Self, Self::Error> {
+		to_no_codec_light_client_state(state)
 	}
 }
 
@@ -127,7 +128,16 @@ impl<const SYNC_COMMITTEE_SIZE: usize> TryFrom<types::LightClientUpdate<SYNC_COM
 	fn try_from(
 		update: types::LightClientUpdate<SYNC_COMMITTEE_SIZE>,
 	) -> Result<Self, Self::Error> {
-		construct_light_client_update(update)
+		to_codec_light_client_update(update)
+	}
+}
+
+impl<const SYNC_COMMITTEE_SIZE: usize> TryFrom<LightClientUpdate>
+	for types::LightClientUpdate<SYNC_COMMITTEE_SIZE>
+{
+	type Error = Error;
+	fn try_from(derived_update: LightClientUpdate) -> Result<Self, Self::Error> {
+		to_no_codec_light_client_update(derived_update)
 	}
 }
 
@@ -153,6 +163,27 @@ impl<const SYNC_COMMITTEE_SIZE: usize> TryFrom<types::SyncCommitteeUpdate<SYNC_C
 				.next_sync_committee_branch
 				.iter()
 				.map(|hash| hash.to_vec())
+				.collect(),
+		})
+	}
+}
+
+impl<const SYNC_COMMITTEE_SIZE: usize> TryFrom<SyncCommitteeUpdate>
+	for types::SyncCommitteeUpdate<SYNC_COMMITTEE_SIZE>
+{
+	type Error = Error;
+
+	fn try_from(sync_committee_update: SyncCommitteeUpdate) -> Result<Self, Self::Error> {
+		let next_sync_committee =
+			to_no_codec_sync_committee(sync_committee_update.next_sync_committee)?;
+		Ok(types::SyncCommitteeUpdate {
+			next_sync_committee,
+			next_sync_committee_branch: sync_committee_update
+				.next_sync_committee_branch
+				.iter()
+				.map(|proof| {
+					Hash32::try_from(proof.as_ref()).map_err(|_| Error::InvalidProof).unwrap()
+				})
 				.collect(),
 		})
 	}
@@ -196,6 +227,34 @@ impl TryFrom<types::ExecutionPayloadProof> for ExecutionPayloadProof {
 	}
 }
 
+impl TryFrom<ExecutionPayloadProof> for types::ExecutionPayloadProof {
+	type Error = Error;
+	fn try_from(
+		derived_execution_payload_proof: ExecutionPayloadProof,
+	) -> Result<Self, Self::Error> {
+		let multi_proof = derived_execution_payload_proof
+			.multi_proof
+			.iter()
+			.map(|proof| Hash32::try_from(proof.as_ref()).map_err(|_| Error::InvalidProof).unwrap())
+			.collect();
+
+		let execution_payload_branch = derived_execution_payload_proof
+			.execution_payload_branch
+			.iter()
+			.map(|proof| Hash32::try_from(proof.as_ref()).map_err(|_| Error::InvalidProof).unwrap())
+			.collect();
+
+		Ok(types::ExecutionPayloadProof {
+			state_root: Hash32::try_from(derived_execution_payload_proof.state_root.as_slice())
+				.map_err(|_| Error::InvalidRoot)?,
+			block_number: derived_execution_payload_proof.block_number,
+			multi_proof,
+			execution_payload_branch,
+			timestamp: derived_execution_payload_proof.timestamp,
+		})
+	}
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default, Encode, Decode)]
 pub struct FinalityProof {
 	/// The latest  finalized epoch
@@ -213,6 +272,22 @@ impl TryFrom<types::FinalityProof> for FinalityProof {
 				.finality_branch
 				.iter()
 				.map(|branch| branch.to_vec())
+				.collect(),
+		})
+	}
+}
+
+impl TryFrom<FinalityProof> for types::FinalityProof {
+	type Error = Error;
+	fn try_from(derived_finality_proof: FinalityProof) -> Result<Self, Self::Error> {
+		Ok(types::FinalityProof {
+			epoch: derived_finality_proof.epoch,
+			finality_branch: derived_finality_proof
+				.finality_branch
+				.iter()
+				.map(|proof| {
+					Hash32::try_from(proof.as_ref()).map_err(|_| Error::InvalidProof).unwrap()
+				})
 				.collect(),
 		})
 	}
@@ -259,6 +334,18 @@ impl TryFrom<types::AncestorBlock> for AncestorBlock {
 	}
 }
 
+impl TryFrom<AncestorBlock> for types::AncestorBlock {
+	type Error = Error;
+	fn try_from(derived_ancestor_block: AncestorBlock) -> Result<Self, Self::Error> {
+		let beacon_block_header = to_no_codec_beacon_header(derived_ancestor_block.header)?;
+		Ok(types::AncestorBlock {
+			header: beacon_block_header,
+			execution_payload: derived_ancestor_block.execution_payload.try_into()?,
+			ancestry_proof: derived_ancestor_block.ancestry_proof.try_into()?,
+		})
+	}
+}
+
 /// Holds the neccessary proofs required to verify a header in the `block_roots` field
 /// either in [`BeaconState`] or [`HistoricalBatch`].
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode)]
@@ -279,6 +366,22 @@ impl TryFrom<types::BlockRootsProof> for BlockRootsProof {
 				.iter()
 				.map(|hash| hash.to_vec())
 				.collect(),
+		})
+	}
+}
+
+impl TryFrom<BlockRootsProof> for types::BlockRootsProof {
+	type Error = Error;
+	fn try_from(derived_beacon_block_header: BlockRootsProof) -> Result<Self, Self::Error> {
+		let branch = derived_beacon_block_header
+			.block_header_branch
+			.iter()
+			.map(|proof| Hash32::try_from(proof.as_ref()).map_err(|_| Error::InvalidProof).unwrap())
+			.collect();
+
+		Ok(types::BlockRootsProof {
+			block_header_index: derived_beacon_block_header.block_header_index,
+			block_header_branch: branch,
 		})
 	}
 }
@@ -348,46 +451,50 @@ impl TryFrom<types::AncestryProof> for AncestryProof {
 	}
 }
 
-fn construct_light_client_state<const SYNC_COMMITTEE_SIZE: usize>(
-	state: types::LightClientState<SYNC_COMMITTEE_SIZE>,
-) -> Result<LightClientState, Error> {
-	Ok(LightClientState {
-		finalized_header: state.finalized_header.try_into()?,
-		latest_finalized_epoch: state.latest_finalized_epoch,
-		current_sync_committee: state.current_sync_committee.try_into()?,
-		next_sync_committee: state.next_sync_committee.try_into()?,
-	})
-}
-
-fn construct_light_client_update<const SYNC_COMMITTEE_SIZE: usize>(
-	update: types::LightClientUpdate<SYNC_COMMITTEE_SIZE>,
-) -> Result<LightClientUpdate, Error> {
-	let sync_committee_update_option: Option<SyncCommitteeUpdate>;
-
-	match update.sync_committee_update {
-		Some(sync_committee_update) =>
-			sync_committee_update_option = Some(sync_committee_update.try_into()?),
-
-		None => sync_committee_update_option = None,
+impl TryFrom<AncestryProof> for types::AncestryProof {
+	type Error = Error;
+	fn try_from(ancestry_proof: AncestryProof) -> Result<Self, Self::Error> {
+		Ok(match ancestry_proof {
+			AncestryProof::BlockRoots { block_roots_proof, block_roots_branch } =>
+				types::AncestryProof::BlockRoots {
+					block_roots_proof: block_roots_proof.try_into()?,
+					block_roots_branch: block_roots_branch
+						.iter()
+						.map(|proof| {
+							Hash32::try_from(proof.as_ref())
+								.map_err(|_| Error::InvalidProof)
+								.unwrap()
+						})
+						.collect(),
+				},
+			AncestryProof::HistoricalRoots {
+				block_roots_proof,
+				historical_batch_proof,
+				historical_roots_proof,
+				historical_roots_index,
+				historical_roots_branch,
+			} => types::AncestryProof::HistoricalRoots {
+				block_roots_proof: block_roots_proof.try_into()?,
+				historical_batch_proof: historical_batch_proof
+					.iter()
+					.map(|proof| {
+						Hash32::try_from(proof.as_ref()).map_err(|_| Error::InvalidProof).unwrap()
+					})
+					.collect(),
+				historical_roots_proof: historical_roots_proof
+					.iter()
+					.map(|proof| {
+						Hash32::try_from(proof.as_ref()).map_err(|_| Error::InvalidProof).unwrap()
+					})
+					.collect(),
+				historical_roots_index,
+				historical_roots_branch: historical_roots_branch
+					.iter()
+					.map(|proof| {
+						Hash32::try_from(proof.as_ref()).map_err(|_| Error::InvalidProof).unwrap()
+					})
+					.collect(),
+			},
+		})
 	}
-	Ok(LightClientUpdate {
-		attested_header: update.attested_header.try_into()?,
-		sync_committee_update: sync_committee_update_option,
-		finalized_header: update.finalized_header.try_into()?,
-		execution_payload: update.execution_payload.try_into()?,
-		finality_proof: update.finality_proof.try_into()?,
-		sync_aggregate: update.sync_aggregate.try_into()?,
-		signature_slot: update.signature_slot,
-		ancestor_blocks: update
-			.ancestor_blocks
-			.iter()
-			.map(|ancestor_block| {
-				ancestor_block
-					.clone()
-					.try_into()
-					.map_err(|_| Error::ErrorConvertingAncestorBlock)
-					.unwrap()
-			})
-			.collect(),
-	})
 }
