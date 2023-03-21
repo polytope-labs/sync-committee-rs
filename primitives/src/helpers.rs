@@ -39,11 +39,9 @@ pub fn to_no_codec_sync_committee<const SYNC_COMMITTEE_SIZE: usize>(
 		.public_keys
 		.iter()
 		.map(|public_key| {
-			PublicKey::try_from(public_key.as_slice())
-				.map_err(|_| Error::InvalidPublicKey)
-				.unwrap()
+			PublicKey::try_from(public_key.as_slice()).map_err(|_| Error::InvalidPublicKey)
 		})
-		.collect();
+		.collect::<Result<Vec<_>, Error>>()?;
 	let sync_committee = SyncCommittee {
 		public_keys: Vector::try_from(public_keys_vector).unwrap(),
 		aggregate_public_key: PublicKey::try_from(
@@ -115,9 +113,8 @@ pub fn to_no_codec_light_client_update<const SYNC_COMMITTEE_SIZE: usize>(
 					.clone()
 					.try_into()
 					.map_err(|_| Error::ErrorConvertingAncestorBlock)
-					.unwrap()
 			})
-			.collect(),
+			.collect::<Result<Vec<_>, Error>>()?,
 	})
 }
 
@@ -159,8 +156,7 @@ pub fn to_codec_light_client_update<const SYNC_COMMITTEE_SIZE: usize>(
 					.clone()
 					.try_into()
 					.map_err(|_| Error::ErrorConvertingAncestorBlock)
-					.unwrap()
 			})
-			.collect(),
+			.collect::<Result<Vec<_>, Error>>()?,
 	})
 }

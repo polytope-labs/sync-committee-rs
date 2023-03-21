@@ -181,10 +181,8 @@ impl<const SYNC_COMMITTEE_SIZE: usize> TryFrom<SyncCommitteeUpdate>
 			next_sync_committee_branch: sync_committee_update
 				.next_sync_committee_branch
 				.iter()
-				.map(|proof| {
-					Hash32::try_from(proof.as_ref()).map_err(|_| Error::InvalidProof).unwrap()
-				})
-				.collect(),
+				.map(|proof| Hash32::try_from(proof.as_ref()).map_err(|_| Error::InvalidProof))
+				.collect::<Result<Vec<_>, Error>>()?,
 		})
 	}
 }
@@ -235,14 +233,14 @@ impl TryFrom<ExecutionPayloadProof> for types::ExecutionPayloadProof {
 		let multi_proof = derived_execution_payload_proof
 			.multi_proof
 			.iter()
-			.map(|proof| Hash32::try_from(proof.as_ref()).map_err(|_| Error::InvalidProof).unwrap())
-			.collect();
+			.map(|proof| Hash32::try_from(proof.as_ref()).map_err(|_| Error::InvalidProof))
+			.collect::<Result<Vec<_>, _>>()?;
 
 		let execution_payload_branch = derived_execution_payload_proof
 			.execution_payload_branch
 			.iter()
-			.map(|proof| Hash32::try_from(proof.as_ref()).map_err(|_| Error::InvalidProof).unwrap())
-			.collect();
+			.map(|proof| Hash32::try_from(proof.as_ref()).map_err(|_| Error::InvalidProof))
+			.collect::<Result<Vec<_>, _>>()?;
 
 		Ok(types::ExecutionPayloadProof {
 			state_root: Hash32::try_from(derived_execution_payload_proof.state_root.as_slice())
@@ -285,10 +283,8 @@ impl TryFrom<FinalityProof> for types::FinalityProof {
 			finality_branch: derived_finality_proof
 				.finality_branch
 				.iter()
-				.map(|proof| {
-					Hash32::try_from(proof.as_ref()).map_err(|_| Error::InvalidProof).unwrap()
-				})
-				.collect(),
+				.map(|proof| Hash32::try_from(proof.as_ref()).map_err(|_| Error::InvalidProof))
+				.collect::<Result<Vec<_>, _>>()?,
 		})
 	}
 }
@@ -376,8 +372,8 @@ impl TryFrom<BlockRootsProof> for types::BlockRootsProof {
 		let branch = derived_beacon_block_header
 			.block_header_branch
 			.iter()
-			.map(|proof| Hash32::try_from(proof.as_ref()).map_err(|_| Error::InvalidProof).unwrap())
-			.collect();
+			.map(|proof| Hash32::try_from(proof.as_ref()).map_err(|_| Error::InvalidProof))
+			.collect::<Result<Vec<_>, _>>()?;
 
 		Ok(types::BlockRootsProof {
 			block_header_index: derived_beacon_block_header.block_header_index,
@@ -461,11 +457,9 @@ impl TryFrom<AncestryProof> for types::AncestryProof {
 					block_roots_branch: block_roots_branch
 						.iter()
 						.map(|proof| {
-							Hash32::try_from(proof.as_ref())
-								.map_err(|_| Error::InvalidProof)
-								.unwrap()
+							Hash32::try_from(proof.as_ref()).map_err(|_| Error::InvalidProof)
 						})
-						.collect(),
+						.collect::<Result<Vec<_>, _>>()?,
 				},
 			AncestryProof::HistoricalRoots {
 				block_roots_proof,
@@ -477,23 +471,17 @@ impl TryFrom<AncestryProof> for types::AncestryProof {
 				block_roots_proof: block_roots_proof.try_into()?,
 				historical_batch_proof: historical_batch_proof
 					.iter()
-					.map(|proof| {
-						Hash32::try_from(proof.as_ref()).map_err(|_| Error::InvalidProof).unwrap()
-					})
-					.collect(),
+					.map(|proof| Hash32::try_from(proof.as_ref()).map_err(|_| Error::InvalidProof))
+					.collect::<Result<Vec<_>, _>>()?,
 				historical_roots_proof: historical_roots_proof
 					.iter()
-					.map(|proof| {
-						Hash32::try_from(proof.as_ref()).map_err(|_| Error::InvalidProof).unwrap()
-					})
-					.collect(),
+					.map(|proof| Hash32::try_from(proof.as_ref()).map_err(|_| Error::InvalidProof))
+					.collect::<Result<Vec<_>, _>>()?,
 				historical_roots_index,
 				historical_roots_branch: historical_roots_branch
 					.iter()
-					.map(|proof| {
-						Hash32::try_from(proof.as_ref()).map_err(|_| Error::InvalidProof).unwrap()
-					})
-					.collect(),
+					.map(|proof| Hash32::try_from(proof.as_ref()).map_err(|_| Error::InvalidProof))
+					.collect::<Result<Vec<_>, _>>()?,
 			},
 		})
 	}
