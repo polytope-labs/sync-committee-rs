@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
   check:
@@ -29,9 +26,6 @@ jobs:
   test:
     name: Test Suite
     runs-on: ubuntu-latest
-    # defaults:
-    #   run:
-    #     shell: bash
     env:
       TUID: 123
     steps:
