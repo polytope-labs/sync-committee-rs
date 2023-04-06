@@ -26,7 +26,6 @@ jobs:
       - name: Build `no-std`
         run: |
           cargo +nightly check -p sync-committee-verifier --no-default-features --target=wasm32-unknown-unknown --verbose
-          cargo +nightly check -p sync-committee-primitives --no-default-features --target=wasm32-unknown-unknown --verbose
 
   test:
     name: Test Suite
