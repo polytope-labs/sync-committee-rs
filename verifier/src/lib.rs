@@ -2,14 +2,18 @@
 #[warn(unused_imports)]
 #[warn(unused_variables)]
 extern crate alloc;
+extern crate core;
 
 pub mod error;
+mod signature_verification;
 
-use crate::error::Error;
+use crate::{
+	error::Error,
+	signature_verification::{verify_aggregate_signature, BLS_COMPRESSED_KEY_SIZE},
+};
 use alloc::vec::Vec;
 use ethereum_consensus::{
 	bellatrix::{compute_domain, mainnet::SYNC_COMMITTEE_SIZE, Checkpoint},
-	crypto::{PublicKey, Signature},
 	primitives::Root,
 	signing::compute_signing_root,
 	state_transition::Context,
@@ -34,13 +38,8 @@ pub type LightClientState = sync_committee_primitives::types::LightClientState<S
 pub type LightClientUpdate =
 	sync_committee_primitives::types::LightClientUpdate<SYNC_COMMITTEE_SIZE>;
 
-/// Verify sync committee signatures
-pub trait BlsVerify {
-	fn verify(public_keys: &[&PublicKey], msg: &[u8], signature: &Signature) -> Result<(), Error>;
-}
-
 /// This function simply verifies a sync committee's attestation & it's finalized counterpart.
-pub fn verify_sync_committee_attestation<V: BlsVerify>(
+pub fn verify_sync_committee_attestation(
 	trusted_state: LightClientState,
 	update: LightClientUpdate,
 ) -> Result<LightClientState, Error> {
@@ -94,10 +93,18 @@ pub fn verify_sync_committee_attestation<V: BlsVerify>(
 
 	let sync_committee_pubkeys = sync_committee.public_keys;
 
-	let participant_pubkeys = sync_committee_bits
+	let non_participant_pubkeys = sync_committee_bits
 		.iter()
 		.zip(sync_committee_pubkeys.iter())
-		.filter_map(|(bit, key)| if *bit { Some(key) } else { None })
+		.filter_map(|(bit, key)| {
+			if !bit.as_ref() {
+				let mut pub_key = [0u8; BLS_COMPRESSED_KEY_SIZE];
+				pub_key.copy_from_slice(key.as_slice());
+				Some(pub_key)
+			} else {
+				None
+			}
+		})
 		.collect::<Vec<_>>();
 
 	let fork_version = compute_fork_version(compute_epoch_at_slot(update.signature_slot));
@@ -111,13 +118,24 @@ pub fn verify_sync_committee_attestation<V: BlsVerify>(
 	)
 	.map_err(|_| Error::InvalidUpdate)?;
 
-	let signing_root = compute_signing_root(&mut update.attested_header.clone(), domain);
+	let signing_root = compute_signing_root(&mut update.attested_header.clone(), domain)
+		.map_err(|_| Error::InvalidRoot)?
+		.as_bytes()
+		.to_vec();
+	let aggregate_pub_key = {
+		let mut pub_key = [0u8; BLS_COMPRESSED_KEY_SIZE];
+		pub_key
+			.copy_from_slice(trusted_state.current_sync_committee.aggregate_public_key.as_slice());
+		pub_key
+	};
 
-	V::verify(
-		&*participant_pubkeys,
-		signing_root.map_err(|_| Error::InvalidRoot)?.as_bytes(),
-		&update.sync_aggregate.sync_committee_signature,
-	)?;
+	verify_aggregate_signature(
+		&aggregate_pub_key,
+		&non_participant_pubkeys,
+		signing_root,
+		&update.sync_aggregate.sync_committee_signature.to_vec(),
+	)
+	.map_err(|_| Error::SignatureVerification)?;
 
 	// Verify that the `finality_branch` confirms `finalized_header`
 	// to match the finalized checkpoint root saved in the state of `attested_header`.
@@ -403,14 +421,4 @@ pub fn verify_sync_committee_attestation<V: BlsVerify>(
 	};
 
 	Ok(new_light_client_state)
-}
-
-pub struct SignatureVerifier;
-
-impl BlsVerify for SignatureVerifier {
-	fn verify(public_keys: &[&PublicKey], msg: &[u8], signature: &Signature) -> Result<(), Error> {
-		ethereum_consensus::crypto::fast_aggregate_verify(public_keys, msg, signature)?;
-
-		Ok(())
-	}
 }
