@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use anyhow::anyhow;
 use ark_bls12_381::Bls12_381;
 use ark_ec::{pairing::Pairing, AffineRepr};
