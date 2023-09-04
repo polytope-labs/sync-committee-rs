@@ -26,6 +26,4 @@ std = [
 testing = ["sync-committee-primitives/testing"]
 
 [dev-dependencies]
-primitive-types = "0.12.1"
 hex = "0.4.3"
-num-traits = "0.2.16"
