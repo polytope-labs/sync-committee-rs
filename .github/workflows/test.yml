@@ -56,7 +56,7 @@ jobs:
           git clone https://github.com/polytope-labs/eth-pos-devnet.git
           cd eth-pos-devnet
           docker compose up &
-          ../scripts/wait_for_tcp_port_opening.sh localhost 8080 
+          ../scripts/wait_for_tcp_port_opening.sh localhost 3500 
           ../scripts/wait_for_tcp_port_opening.sh localhost 8545 
 
       - name: Run all tests
