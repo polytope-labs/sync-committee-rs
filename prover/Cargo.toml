@@ -22,9 +22,11 @@ ark-ec = { version = "0.4.2" }
 ark-bls12-381 = { version = "0.4.0" }
 bls_on_arkworks = { version = "0.2.2" }
 primitive-types = { version = "0.12.1", features = ["serde_no_std", "impl-codec"] }
+log = "0.4.20"
+hex = "0.4.3"
 
 [dev-dependencies]
-hex = "0.4.3"
+
 sync-committee-primitives = { path= "../primitives" }
 sync-committee-verifier = { path= "../verifier" }
 tokio = { version = "1.32.0", features = ["full"] }

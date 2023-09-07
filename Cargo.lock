@@ -1530,6 +1530,7 @@ dependencies = [
  "bls_on_arkworks",
  "env_logger",
  "hex",
+ "log",
  "primitive-types",
  "reqwest",
  "serde",

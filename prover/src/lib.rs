@@ -7,7 +7,9 @@ mod test;
 
 use anyhow::anyhow;
 use bls_on_arkworks::{point_to_pubkey, types::G1ProjectivePoint};
+use log::debug;
 use reqwest::Client;
+use std::time::Duration;
 use sync_committee_primitives::consensus_types::{
 	BeaconBlock, BeaconBlockHeader, BeaconState, SyncCommittee, Validator,
 };
@@ -33,10 +35,13 @@ use sync_committee_primitives::{
 		NEXT_SYNC_COMMITTEE_INDEX, SLOTS_PER_EPOCH, SLOTS_PER_HISTORICAL_ROOT, SYNC_COMMITTEE_SIZE,
 		VALIDATOR_REGISTRY_LIMIT,
 	},
-	types::{AncestryProof, BlockRootsProof, ExecutionPayloadProof},
-	util::compute_epoch_at_slot,
+	types::{
+		AncestryProof, BlockRootsProof, ExecutionPayloadProof, FinalityProof, LightClientUpdate,
+		SyncCommitteeUpdate,
+	},
+	util::{compute_epoch_at_slot, compute_sync_committee_period_at_slot},
 };
-use sync_committee_verifier::signature_verification::pubkey_to_projective;
+use sync_committee_verifier::{signature_verification::pubkey_to_projective, LightClientState};
 
 pub type BeaconStateType = BeaconState<
 	SLOTS_PER_HISTORICAL_ROOT,
@@ -204,6 +209,152 @@ impl SyncCommitteeProver {
 
 	fn generate_route(&self, path: &str) -> String {
 		format!("{}{}", self.node_url.clone(), path)
+	}
+
+	pub async fn fetch_light_client_update(
+		&self,
+		client_state: LightClientState,
+		debug_target: &str,
+	) -> Result<Option<LightClientUpdate>, anyhow::Error> {
+		let finality_checkpoint = self.fetch_finalized_checkpoint().await?;
+		if finality_checkpoint.finalized.root == Node::default() ||
+			finality_checkpoint.finalized.epoch <= client_state.latest_finalized_epoch ||
+			finality_checkpoint.finalized.root ==
+				client_state.finalized_header.clone().hash_tree_root()?
+		{
+			return Ok(None)
+		}
+
+		debug!(target: debug_target, "A new epoch has been finalized {}", finality_checkpoint.finalized.epoch);
+
+		let block_id = {
+			let mut block_id = hex::encode(finality_checkpoint.finalized.root.as_bytes());
+			block_id.insert_str(0, "0x");
+			block_id
+		};
+
+		let finalized_header = self.fetch_header(&block_id).await?;
+		let mut finalized_state =
+			self.fetch_beacon_state(finalized_header.slot.to_string().as_str()).await?;
+		let execution_payload_proof = prove_execution_payload(&mut finalized_state)?;
+
+		let mut attested_epoch = finality_checkpoint.finalized.epoch + 2;
+		// Get attested header and the signature slot
+
+		let mut attested_slot = attested_epoch * SLOTS_PER_EPOCH;
+		// Due to the fact that all slots in an epoch can be missed we are going to try and fetch
+		// the attested block from four possible epochs.
+		let mut attested_epoch_loop_count = 0;
+		let (attested_block_header, signature_block) = loop {
+			if attested_epoch_loop_count == 4 {
+				Err(anyhow!("Could not fetch any block from the attested epoch after going through four epochs"))?
+			}
+			// If we have maxed out the slots in the current epoch and still didn't find any block,
+			// we move to the next epoch
+			if (attested_epoch * SLOTS_PER_EPOCH).saturating_add(SLOTS_PER_EPOCH - 1) ==
+				attested_slot
+			{
+				// No block was found in attested epoch we move to the next possible attested epoch
+				debug!(target: debug_target,
+					"No slots found in epoch {attested_epoch} Moving to the next possible epoch {}",
+					attested_epoch + 1
+				);
+				tokio::time::sleep(Duration::from_secs(24)).await;
+				attested_epoch += 1;
+				attested_slot = attested_epoch * SLOTS_PER_EPOCH;
+				attested_epoch_loop_count += 1;
+			}
+
+			if let Ok(header) = self.fetch_header(attested_slot.to_string().as_str()).await {
+				let mut signature_slot = header.slot + 1;
+				let mut loop_count = 0;
+				let signature_block = loop {
+					if loop_count == 2 {
+						break None
+					}
+					if (attested_epoch * SLOTS_PER_EPOCH).saturating_add(SLOTS_PER_EPOCH - 1) ==
+						signature_slot
+					{
+						debug!(target: debug_target, "Waiting for signature block for attested header");
+						tokio::time::sleep(Duration::from_secs(24)).await;
+						signature_slot = header.slot + 1;
+						loop_count += 1;
+					}
+					if let Ok(signature_block) =
+						self.fetch_block(signature_slot.to_string().as_str()).await
+					{
+						break Some(signature_block)
+					}
+					signature_slot += 1;
+				};
+				// If the next block does not have sufficient sync committee participants
+				if let Some(signature_block) = signature_block {
+					if signature_block
+						.body
+						.sync_aggregate
+						.sync_committee_bits
+						.as_bitslice()
+						.count_ones() < (2 * (SYNC_COMMITTEE_SIZE)) / 3
+					{
+						attested_slot += 1;
+						debug!(target:debug_target, "Signature block does not have sufficient sync committee participants -> participants {}", signature_block.body.sync_aggregate.sync_committee_bits.as_bitslice().count_ones());
+						continue
+					}
+					break (header, signature_block)
+				} else {
+					debug!(target: debug_target,"No signature block found in {attested_epoch} Moving to the next possible epoch {}", attested_epoch + 1);
+					tokio::time::sleep(Duration::from_secs(24)).await;
+					attested_epoch += 1;
+					attested_slot = attested_epoch * SLOTS_PER_EPOCH;
+					attested_epoch_loop_count += 1;
+					continue
+				}
+			}
+			attested_slot += 1
+		};
+
+		let mut attested_state =
+			self.fetch_beacon_state(attested_block_header.slot.to_string().as_str()).await?;
+
+		let finalized_hash_tree_root = finalized_header.clone().hash_tree_root()?;
+
+		if cfg!(test) {
+			assert_eq!(finalized_hash_tree_root, attested_state.finalized_checkpoint.root);
+		}
+
+		let finality_proof = FinalityProof {
+			epoch: finality_checkpoint.finalized.epoch,
+			finality_branch: prove_finalized_header(&mut attested_state)?,
+		};
+
+		let state_period = compute_sync_committee_period_at_slot(finalized_header.slot);
+
+		let update_attested_period =
+			compute_sync_committee_period_at_slot(attested_block_header.slot);
+
+		let sync_committee_update = if state_period == update_attested_period {
+			let sync_committee_proof = prove_sync_committee_update(&mut attested_state)?;
+
+			Some(SyncCommitteeUpdate {
+				next_sync_committee: attested_state.next_sync_committee,
+				next_sync_committee_branch: sync_committee_proof,
+			})
+		} else {
+			None
+		};
+
+		// construct light client
+		let light_client_update = LightClientUpdate {
+			attested_header: attested_block_header,
+			sync_committee_update,
+			finalized_header,
+			execution_payload: execution_payload_proof,
+			finality_proof,
+			sync_aggregate: signature_block.body.sync_aggregate,
+			signature_slot: signature_block.slot,
+		};
+
+		Ok(Some(light_client_update))
 	}
 }
 
