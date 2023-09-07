@@ -6,24 +6,14 @@ authors = ["Polytope Labs"]
 
 [dependencies]
 sync-committee-primitives = { path= "../primitives", default-features = false }
-ethereum-consensus = { git = "https://github.com/polytope-labs/ethereum-consensus", branch = "main", default-features = false }
-ssz-rs = { git = "https://github.com/polytope-labs/ssz-rs", branch = "main" , default-features = false }
+ssz-rs = { git = "https://github.com/polytope-labs/ssz-rs", branch = "dami/encode-decode" , default-features = false }
 log = { version = "0.4.17", default-features = false }
-ark-ec = { version = "0.4.2", default-features = false }
-ark-bls12-381 = { version = "0.4.0", default-features = false }
-bls_on_arkworks = { version = "0.2.2", default-features = false }
-anyhow = { version = "1.0.75", default-features = false }
 
 [features]
 default = ["std"]
 std = [
     "ssz-rs/std",
-    "log/std",
-    "ark-ec/std",
-    "bls_on_arkworks/std",
-    "ark-bls12-381/std"
+    "log/std"
 ]
-testing = ["sync-committee-primitives/testing"]
-
-[dev-dependencies]
-hex = "0.4.3"
+testnet = ["sync-committee-primitives/testnet"]
+mainnet = ["sync-committee-primitives/mainnet"]
