@@ -9,9 +9,9 @@ pub type Slot = u64;
 pub type Root = Node;
 pub type ParticipationFlags = u8;
 
-pub type CommitteeIndex = usize;
-pub type ValidatorIndex = usize;
-pub type WithdrawalIndex = usize;
+pub type CommitteeIndex = u64;
+pub type ValidatorIndex = u64;
+pub type WithdrawalIndex = u64;
 pub type Gwei = u64;
 pub type Hash32 = Bytes32;
 
@@ -47,8 +47,6 @@ pub const MAX_ATTESTATIONS: usize = 128;
 pub const MAX_DEPOSITS: usize = 16;
 pub const MAX_VOLUNTARY_EXITS: usize = 16;
 pub const JUSTIFICATION_BITS_LENGTH: usize = 4;
-
-pub const SLOTS_PER_EPOCH: Slot = 32;
 
 pub const MAX_BYTES_PER_TRANSACTION: usize = 1_073_741_824;
 pub const MAX_TRANSACTIONS_PER_PAYLOAD: usize = 1_048_576;
@@ -97,6 +95,9 @@ pub mod testnet {
 	pub const BELLATRIX_FORK_EPOCH: Epoch = 112260;
 	pub const CAPELLA_FORK_EPOCH: Epoch = u64::MAX;
 	pub const CAPELLA_FORK_VERSION: Version = [3, 0, 16, 32];
+	pub const MAX_WITHDRAWALS_PER_PAYLOAD: usize = 16;
+	pub const MAX_BLS_TO_EXECUTION_CHANGES: usize = 16;
+	pub const MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP: usize = 16384;
 }
 
 #[cfg(feature = "mainnet")]
@@ -112,6 +113,9 @@ pub mod mainnet {
 	pub const BELLATRIX_FORK_EPOCH: Epoch = 144896;
 	pub const CAPELLA_FORK_EPOCH: Epoch = u64::MAX;
 	pub const CAPELLA_FORK_VERSION: Version = [3, 0, 0, 0];
+	pub const MAX_WITHDRAWALS_PER_PAYLOAD: usize = 16;
+	pub const MAX_BLS_TO_EXECUTION_CHANGES: usize = 16;
+	pub const MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP: usize = 16384;
 }
 
 #[cfg(all(not(feature = "mainnet"), not(feature = "testnet")))]
@@ -120,7 +124,7 @@ pub mod devnet {
 	use hex_literal::hex;
 	pub const SLOTS_PER_EPOCH: Slot = 6;
 	pub const GENESIS_VALIDATORS_ROOT: [u8; 32] =
-		hex_literal::hex!("6034f557b4560fc549ac0e2c63269deb07bfac7bf2bbd0b8b7d4d321240bffd9");
+		hex_literal::hex!("83431ec7fcf92cfc44947fc0418e831c25e1d0806590231c439830db7ad54fda");
 	pub const BELLATRIX_FORK_VERSION: Version = hex!("52525502");
 	pub const ALTAIR_FORK_VERSION: Version = hex!("52525501");
 	pub const GENESIS_FORK_VERSION: Version = hex!("52525500");
@@ -128,4 +132,7 @@ pub mod devnet {
 	pub const BELLATRIX_FORK_EPOCH: Epoch = 0;
 	pub const CAPELLA_FORK_EPOCH: Epoch = 2;
 	pub const CAPELLA_FORK_VERSION: Version = hex!("52525503");
+	pub const MAX_WITHDRAWALS_PER_PAYLOAD: usize = 16;
+	pub const MAX_BLS_TO_EXECUTION_CHANGES: usize = 16;
+	pub const MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP: usize = 16384;
 }

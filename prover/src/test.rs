@@ -1,10 +1,13 @@
 use super::*;
 use base2::Base2;
 use ethers::{
-	prelude::Middleware,
-	providers::{Provider, Ws},
+	prelude::{Http, Middleware, ProviderExt},
+	providers::Provider,
 };
-use ssz_rs::{calculate_multi_merkle_root, is_valid_merkle_branch, GeneralizedIndex, Merkleized};
+use ssz_rs::{
+	calculate_multi_merkle_root, get_generalized_index, is_valid_merkle_branch, GeneralizedIndex,
+	Merkleized, SszVariableOrIndex,
+};
 use std::time::Duration;
 use sync_committee_primitives::{
 	constants::{Root, DOMAIN_SYNC_COMMITTEE, GENESIS_FORK_VERSION, GENESIS_VALIDATORS_ROOT},
@@ -17,12 +20,12 @@ use sync_committee_verifier::{
 use tokio::time;
 use tokio_stream::{wrappers::IntervalStream, StreamExt};
 
-const CONSENSUS_NODE_URL: &'static str = "http://localhost:8080";
-const EL_NODE_URL: &'static str = "wss://localhost:8545";
+const CONSENSUS_NODE_URL: &'static str = "http://localhost:3500";
+const EL_NODE_URL: &'static str = "http://localhost:8545";
 
 async fn wait_for_el() {
-	let provider = Provider::<Ws>::connect(EL_NODE_URL).await.unwrap();
-	let sub = provider.subscribe_blocks().await.unwrap();
+	let provider = Provider::<Http>::connect(EL_NODE_URL).await;
+	let sub = provider.watch_blocks().await.unwrap();
 	let _ = sub.take(10).collect::<Vec<_>>();
 }
 
@@ -49,20 +52,20 @@ async fn fetch_block_works() {
 #[cfg(test)]
 #[allow(non_snake_case)]
 #[tokio::test]
-async fn fetch_sync_committee_works() {
+async fn fetch_validator_works() {
 	wait_for_el().await;
 	let sync_committee_prover = SyncCommitteeProver::new(CONSENSUS_NODE_URL.to_string());
-	let block = sync_committee_prover.fetch_sync_committee("head").await;
-	assert!(block.is_ok());
+	let validator = sync_committee_prover.fetch_validator("head", "0").await;
+	assert!(validator.is_ok());
 }
 
 #[cfg(test)]
 #[allow(non_snake_case)]
 #[tokio::test]
-async fn fetch_validator_works() {
+async fn fetch_processed_sync_committee_works() {
 	wait_for_el().await;
 	let sync_committee_prover = SyncCommitteeProver::new(CONSENSUS_NODE_URL.to_string());
-	let validator = sync_committee_prover.fetch_validator("head", "48").await;
+	let validator = sync_committee_prover.fetch_processed_sync_committee("head").await;
 	assert!(validator.is_ok());
 }
 
@@ -70,11 +73,36 @@ async fn fetch_validator_works() {
 #[allow(non_snake_case)]
 #[tokio::test]
 #[ignore]
-async fn fetch_processed_sync_committee_works() {
-	wait_for_el().await;
+async fn generate_indexes() {
 	let sync_committee_prover = SyncCommitteeProver::new(CONSENSUS_NODE_URL.to_string());
-	let validator = sync_committee_prover.fetch_processed_sync_committee("head").await;
-	assert!(validator.is_ok());
+	let beacon_state = sync_committee_prover.fetch_beacon_state("head").await.unwrap();
+	let execution_payload_index = get_generalized_index(
+		&beacon_state,
+		&[SszVariableOrIndex::Name("latest_execution_payload_header")],
+	);
+	let next_sync =
+		get_generalized_index(&beacon_state, &[SszVariableOrIndex::Name("next_sync_committee")]);
+	let finalized =
+		get_generalized_index(&beacon_state, &[SszVariableOrIndex::Name("finalized_checkpoint")]);
+	let execution_payload_root = get_generalized_index(
+		&beacon_state.latest_execution_payload_header,
+		&[SszVariableOrIndex::Name("state_root")],
+	);
+	let block_number = get_generalized_index(
+		&beacon_state.latest_execution_payload_header,
+		&[SszVariableOrIndex::Name("block_number")],
+	);
+	let timestamp = get_generalized_index(
+		&beacon_state.latest_execution_payload_header,
+		&[SszVariableOrIndex::Name("timestamp")],
+	);
+
+	dbg!(execution_payload_index);
+	dbg!(next_sync);
+	dbg!(finalized);
+	dbg!(execution_payload_root);
+	dbg!(block_number);
+	dbg!(timestamp);
 }
 
 #[cfg(test)]
@@ -199,12 +227,9 @@ async fn test_sync_committee_update_proof() {
 	wait_for_el().await;
 	let sync_committee_prover = SyncCommitteeProver::new(CONSENSUS_NODE_URL.to_string());
 
-	let finalized_header = sync_committee_prover.fetch_header("head").await.unwrap();
-
-	let mut finalized_state = sync_committee_prover
-		.fetch_beacon_state(&finalized_header.slot.to_string())
-		.await
-		.unwrap();
+	let mut finalized_state = sync_committee_prover.fetch_beacon_state("head").await.unwrap();
+	let block_id = finalized_state.slot.to_string();
+	let finalized_header = sync_committee_prover.fetch_header(&block_id).await.unwrap();
 
 	let sync_committee_proof = prove_sync_committee_update(&mut finalized_state).unwrap();
 
@@ -273,7 +298,8 @@ async fn test_prover() {
 
 		client_state =
 			verify_sync_committee_attestation(client_state.clone(), light_client_update).unwrap();
-		println!(
+		debug!(
+			target: "prover",
 			"Sucessfully verified Ethereum block at slot {:?}",
 			client_state.finalized_header.slot
 		);
@@ -286,10 +312,12 @@ async fn test_prover() {
 	}
 }
 
+#[ignore]
 #[cfg(test)]
 #[allow(non_snake_case)]
 #[tokio::test]
 async fn test_sync_committee_signature_verification() {
+	wait_for_el().await;
 	let sync_committee_prover = SyncCommitteeProver::new(CONSENSUS_NODE_URL.to_string());
 	let block = loop {
 		let block = sync_committee_prover.fetch_block("head").await.unwrap();
