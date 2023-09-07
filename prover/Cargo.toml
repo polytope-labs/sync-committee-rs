@@ -7,7 +7,8 @@ edition = "2021"
 
 [dependencies]
 sync-committee-primitives = { path= "../primitives", default-features = false }
-ssz-rs = { git = "https://github.com/polytope-labs/ssz-rs",  branch = "dami/encode-decode" }
+sync-committee-verifier = { path= "../verifier", default-features = false}
+ssz-rs = { git = "https://github.com/polytope-labs/ssz-rs",  branch = "main" }
 reqwest = {version="0.11.14", features=["json"]}
 serde = { version = "1.0.185", optional = true, features = ["derive"] }
 serde_json = { version = "1.0.81"}
@@ -40,6 +41,6 @@ std = [
     "ark-bls12-381/std",
     "serde"
 ]
-testnet = ["sync-committee-primitives/testnet"]
-mainnet = ["sync-committee-primitives/mainnet"]
+testnet = ["sync-committee-primitives/testnet", "sync-committee-verifier/testnet"]
+mainnet = ["sync-committee-primitives/mainnet", "sync-committee-verifier/mainnet"]
 

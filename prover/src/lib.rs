@@ -5,10 +5,11 @@ mod routes;
 #[cfg(test)]
 mod test;
 
+use anyhow::anyhow;
+use bls_on_arkworks::{point_to_pubkey, types::G1ProjectivePoint};
 use reqwest::Client;
 use sync_committee_primitives::consensus_types::{
-	eth_aggregate_public_keys, BeaconBlock, BeaconBlockHeader, BeaconState, SyncCommittee,
-	Validator,
+	BeaconBlock, BeaconBlockHeader, BeaconState, SyncCommittee, Validator,
 };
 
 use crate::{
@@ -35,6 +36,7 @@ use sync_committee_primitives::{
 	types::{AncestryProof, BlockRootsProof, ExecutionPayloadProof},
 	util::compute_epoch_at_slot,
 };
+use sync_committee_verifier::signature_verification::pubkey_to_projective;
 
 pub type BeaconStateType = BeaconState<
 	SLOTS_PER_HISTORICAL_ROOT,
@@ -288,4 +290,20 @@ pub fn prove_block_roots_proof(
 		let block_roots_branch = ssz_rs::generate_proof(&mut state, &[BLOCK_ROOTS_INDEX as usize])?;
 		Ok(AncestryProof::BlockRoots { block_roots_proof, block_roots_branch })
 	}
+}
+
+pub fn eth_aggregate_public_keys(points: &[BlsPublicKey]) -> anyhow::Result<BlsPublicKey> {
+	let points = points
+		.iter()
+		.map(|point| pubkey_to_projective(point))
+		.collect::<Result<Vec<_>, _>>()?;
+	let aggregate = points
+		.into_iter()
+		.fold(G1ProjectivePoint::default(), |acc, g1_point| acc + g1_point);
+	let public_key = point_to_pubkey(aggregate.into());
+
+	let bls_public_key =
+		BlsPublicKey::try_from(public_key.as_slice()).map_err(|e| anyhow!("{:?}", e))?;
+
+	Ok(bls_public_key)
 }

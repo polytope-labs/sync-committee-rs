@@ -1466,7 +1466,7 @@ dependencies = [
 [[package]]
 name = "ssz-rs"
 version = "0.8.0"
-source = "git+https://github.com/polytope-labs/ssz-rs?branch=dami/encode-decode#13a5cfff3e3d934cb7dce3e7cdc7f7a33e97be61"
+source = "git+https://github.com/polytope-labs/ssz-rs?branch=main#81e9f63c93ca33f5f484ac301553f04912f2de23"
 dependencies = [
  "as-any",
  "bitvec",
@@ -1482,7 +1482,7 @@ dependencies = [
 [[package]]
 name = "ssz-rs-derive"
 version = "0.8.0"
-source = "git+https://github.com/polytope-labs/ssz-rs?branch=dami/encode-decode#13a5cfff3e3d934cb7dce3e7cdc7f7a33e97be61"
+source = "git+https://github.com/polytope-labs/ssz-rs?branch=main#81e9f63c93ca33f5f484ac301553f04912f2de23"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1567,6 +1567,11 @@ dependencies = [
 name = "sync-committee-verifier"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "ark-bls12-381",
+ "ark-ec",
+ "bls_on_arkworks",
+ "hex",
  "log",
  "ssz-rs",
  "sync-committee-primitives",

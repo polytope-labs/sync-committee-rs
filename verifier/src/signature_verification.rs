@@ -7,11 +7,9 @@ use bls_on_arkworks::{
 	types::{BLS12381Pairing, G1AffinePoint, G1ProjectivePoint, G2AffinePoint, Signature},
 	DST_ETHEREUM,
 };
+use sync_committee_primitives::constants::BlsPublicKey;
 
-pub const BLS_COMPRESSED_KEY_SIZE: usize = 48;
-pub type BlsPublicKey = [u8; BLS_COMPRESSED_KEY_SIZE];
-
-fn affine_to_projective(compressed_key: &BlsPublicKey) -> anyhow::Result<G1ProjectivePoint> {
+pub fn pubkey_to_projective(compressed_key: &BlsPublicKey) -> anyhow::Result<G1ProjectivePoint> {
 	let affine_point = pubkey_to_point(&compressed_key.to_vec()).map_err(|e| anyhow!("{:?}", e))?;
 	Ok(affine_point.into())
 }
@@ -20,10 +18,10 @@ fn subtract_points_from_aggregate(
 	aggregate: &BlsPublicKey,
 	points: &[BlsPublicKey],
 ) -> anyhow::Result<G1ProjectivePoint> {
-	let aggregate = affine_to_projective(aggregate)?;
+	let aggregate = pubkey_to_projective(aggregate)?;
 	let points = points
 		.iter()
-		.map(|point| affine_to_projective(point))
+		.map(|point| pubkey_to_projective(point))
 		.collect::<Result<Vec<_>, _>>()?;
 	let subset_aggregate = points.into_iter().fold(aggregate, |acc, point| acc - point);
 	Ok(subset_aggregate)
@@ -68,7 +66,7 @@ pub fn verify_aggregate_signature(
 
 #[cfg(test)]
 mod tests {
-	use crate::signature_verification::{verify_aggregate_signature, BLS_COMPRESSED_KEY_SIZE};
+	use crate::signature_verification::verify_aggregate_signature;
 
 	#[test]
 	fn test_signature_verification() {
@@ -89,23 +87,14 @@ mod tests {
 			hex::decode("813a89a296973e35545cfa74fe3efd172a7d19443c97c625d699e9737229b0a2")
 				.unwrap();
 		let aggregate_signature = hex::decode("a1abfcf9bd54b7a003e1f45f7543b194d8d25b816577b02ee4f1c99aa9821c620be6ecedbc8c5fab64d343a6cc832040029040e591fa24db54f5441f28d73918775e8feeac6177c9e016d2576b982d1cce453896a8aace2bda7374e5a76ce213").unwrap();
-		let raw_aggregate_pk = hex::decode("a3f2da752bd1dfc7288b46cc061668856e0cefa93ba6e8ff4699f355138f63a541fdb3444ddebcdce695d6313fa4b244").unwrap();
-		let mut aggregate_pub_key = [0; BLS_COMPRESSED_KEY_SIZE];
-		aggregate_pub_key.copy_from_slice(&raw_aggregate_pk);
+		let aggregate_pub_key = hex::decode("a3f2da752bd1dfc7288b46cc061668856e0cefa93ba6e8ff4699f355138f63a541fdb3444ddebcdce695d6313fa4b244").unwrap().try_into().unwrap();
+
 		let bit_vector = hex::decode("01000100010001000100").unwrap();
 
 		let non_participants = pks
 			.into_iter()
 			.zip(bit_vector)
-			.filter_map(|(pk, bit)| {
-				if bit == 0 {
-					let mut pub_key = [0; BLS_COMPRESSED_KEY_SIZE];
-					pub_key.copy_from_slice(&pk);
-					Some(pub_key)
-				} else {
-					None
-				}
-			})
+			.filter_map(|(pk, bit)| if bit == 0 { Some(pk.try_into().unwrap()) } else { None })
 			.collect::<Vec<_>>();
 
 		verify_aggregate_signature(

@@ -7,8 +7,6 @@ use crate::{
 	ssz::{ByteList, ByteVector},
 };
 use alloc::{vec, vec::Vec};
-use anyhow::anyhow;
-use bls_on_arkworks::{point_to_pubkey, pubkey_to_point, types::G1ProjectivePoint};
 use ssz_rs::{prelude::*, Deserialize, List, Vector};
 
 #[derive(Default, Debug, SimpleSerialize, Clone, PartialEq, Eq, codec::Encode, codec::Decode)]
@@ -373,25 +371,4 @@ pub struct BeaconState<
 		MAX_BYTES_PER_TRANSACTION,
 		MAX_TRANSACTIONS_PER_PAYLOAD,
 	>,
-}
-
-fn affine_to_projective(compressed_key: &BlsPublicKey) -> anyhow::Result<G1ProjectivePoint> {
-	let affine_point = pubkey_to_point(&compressed_key.to_vec()).map_err(|e| anyhow!("{:?}", e))?;
-	Ok(affine_point.into())
-}
-
-pub fn eth_aggregate_public_keys(points: &[BlsPublicKey]) -> anyhow::Result<BlsPublicKey> {
-	let points = points
-		.iter()
-		.map(|point| affine_to_projective(point))
-		.collect::<Result<Vec<_>, _>>()?;
-	let aggregate = points
-		.into_iter()
-		.fold(G1ProjectivePoint::default(), |acc, g1_point| acc + g1_point);
-	let public_key = point_to_pubkey(aggregate.into());
-
-	let bls_public_key =
-		BlsPublicKey::try_from(public_key.as_slice()).map_err(|e| anyhow!("{:?}", e))?;
-
-	Ok(bls_public_key)
 }

@@ -21,6 +21,14 @@ impl<const N: usize> TryFrom<&[u8]> for ByteVector<N> {
 	}
 }
 
+impl<const N: usize> TryFrom<Vec<u8>> for ByteVector<N> {
+	type Error = ssz_rs::DeserializeError;
+
+	fn try_from(bytes: Vec<u8>) -> Result<Self, Self::Error> {
+		ByteVector::<N>::deserialize(&bytes)
+	}
+}
+
 // impl here to satisfy clippy
 impl<const N: usize> PartialEq for ByteVector<N> {
 	fn eq(&self, other: &Self) -> bool {
