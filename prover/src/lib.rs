@@ -5,11 +5,11 @@ mod routes;
 #[cfg(test)]
 mod test;
 
-use ethereum_consensus::{
-	altair::Validator,
-	bellatrix::{BeaconBlock, BeaconBlockHeader, BeaconState, SyncCommittee},
-};
 use reqwest::Client;
+use sync_committee_primitives::consensus_types::{
+	eth_aggregate_public_keys, BeaconBlock, BeaconBlockHeader, BeaconState, SyncCommittee,
+	Validator,
+};
 
 use crate::{
 	responses::{
@@ -18,28 +18,21 @@ use crate::{
 	},
 	routes::*,
 };
-use ethereum_consensus::{
-	bellatrix::mainnet::{
-		BYTES_PER_LOGS_BLOOM, MAX_BYTES_PER_TRANSACTION, MAX_EXTRA_DATA_BYTES,
-		MAX_TRANSACTIONS_PER_PAYLOAD, SYNC_COMMITTEE_SIZE,
-	},
-	crypto::eth_aggregate_public_keys,
-	phase0::mainnet::{
-		EPOCHS_PER_HISTORICAL_VECTOR, EPOCHS_PER_SLASHINGS_VECTOR, ETH1_DATA_VOTES_BOUND,
-		HISTORICAL_ROOTS_LIMIT, MAX_ATTESTATIONS, MAX_ATTESTER_SLASHINGS, MAX_DEPOSITS,
-		MAX_PROPOSER_SLASHINGS, MAX_VALIDATORS_PER_COMMITTEE, MAX_VOLUNTARY_EXITS, SLOTS_PER_EPOCH,
-		SLOTS_PER_HISTORICAL_ROOT, VALIDATOR_REGISTRY_LIMIT,
-	},
-	primitives::{BlsPublicKey, Bytes32, Hash32, ValidatorIndex},
-};
+use primitive_types::H256;
 use ssz_rs::{List, Merkleized, Node, Vector};
 use sync_committee_primitives::{
-	types::{
-		AncestryProof, BlockRootsProof, ExecutionPayloadProof, BLOCK_ROOTS_INDEX,
+	constants::{
+		BlsPublicKey, Hash32, ValidatorIndex, BLOCK_ROOTS_INDEX, BYTES_PER_LOGS_BLOOM,
+		EPOCHS_PER_HISTORICAL_VECTOR, EPOCHS_PER_SLASHINGS_VECTOR, ETH1_DATA_VOTES_BOUND,
 		EXECUTION_PAYLOAD_BLOCK_NUMBER_INDEX, EXECUTION_PAYLOAD_INDEX,
 		EXECUTION_PAYLOAD_STATE_ROOT_INDEX, EXECUTION_PAYLOAD_TIMESTAMP_INDEX,
-		FINALIZED_ROOT_INDEX, NEXT_SYNC_COMMITTEE_INDEX,
+		FINALIZED_ROOT_INDEX, HISTORICAL_ROOTS_LIMIT, MAX_ATTESTATIONS, MAX_ATTESTER_SLASHINGS,
+		MAX_BYTES_PER_TRANSACTION, MAX_DEPOSITS, MAX_EXTRA_DATA_BYTES, MAX_PROPOSER_SLASHINGS,
+		MAX_TRANSACTIONS_PER_PAYLOAD, MAX_VALIDATORS_PER_COMMITTEE, MAX_VOLUNTARY_EXITS,
+		NEXT_SYNC_COMMITTEE_INDEX, SLOTS_PER_EPOCH, SLOTS_PER_HISTORICAL_ROOT, SYNC_COMMITTEE_SIZE,
+		VALIDATOR_REGISTRY_LIMIT,
 	},
+	types::{AncestryProof, BlockRootsProof, ExecutionPayloadProof},
 	util::compute_epoch_at_slot,
 };
 
@@ -178,12 +171,12 @@ impl SyncCommitteeProver {
 		state_id: &str,
 	) -> Result<SyncCommittee<SYNC_COMMITTEE_SIZE>, reqwest::Error> {
 		// fetches sync committee from Node
-		let node_sync_committee = self.fetch_sync_committee(state_id.clone()).await?;
+		let node_sync_committee = self.fetch_sync_committee(state_id).await?;
 
 		let mut validators: List<Validator, VALIDATOR_REGISTRY_LIMIT> = Default::default();
 		for validator_index in node_sync_committee.validators.clone() {
 			// fetches validator based on validator index
-			let validator = self.fetch_validator(state_id.clone(), &validator_index).await?;
+			let validator = self.fetch_validator(state_id, &validator_index).await?;
 			validators.push(validator);
 		}
 
@@ -231,20 +224,21 @@ pub fn prove_execution_payload(
 	)?;
 
 	Ok(ExecutionPayloadProof {
-		state_root: beacon_state.latest_execution_payload_header.state_root.clone(),
+		state_root: H256::from_slice(
+			beacon_state
+				.latest_execution_payload_header
+				.state_root
+				.clone()
+				.to_vec()
+				.as_slice(),
+		),
 		block_number: beacon_state.latest_execution_payload_header.block_number,
 		timestamp: beacon_state.latest_execution_payload_header.timestamp,
-		multi_proof: multi_proof
-			.into_iter()
-			.map(|node| Bytes32::try_from(node.as_bytes()).expect("Node is always 32 byte slice"))
-			.collect(),
+		multi_proof,
 		execution_payload_branch: ssz_rs::generate_proof(
 			&mut beacon_state,
 			&[EXECUTION_PAYLOAD_INDEX as usize],
-		)?
-		.into_iter()
-		.map(|node| Bytes32::try_from(node.as_bytes()).expect("Node is always 32 byte slice"))
-		.collect(),
+		)?,
 	})
 }
 
@@ -288,25 +282,10 @@ pub fn prove_block_roots_proof(
 
 		let proof = ssz_rs::generate_proof(&mut state.block_roots, &[block_index])?;
 
-		let block_roots_proof = BlockRootsProof {
-			block_header_index: block_index as u64,
-			block_header_branch: proof
-				.into_iter()
-				.map(|node| {
-					Bytes32::try_from(node.as_bytes()).expect("Node is always 32 byte slice")
-				})
-				.collect(),
-		};
+		let block_roots_proof =
+			BlockRootsProof { block_header_index: block_index as u64, block_header_branch: proof };
 
 		let block_roots_branch = ssz_rs::generate_proof(&mut state, &[BLOCK_ROOTS_INDEX as usize])?;
-		Ok(AncestryProof::BlockRoots {
-			block_roots_proof,
-			block_roots_branch: block_roots_branch
-				.into_iter()
-				.map(|node| {
-					Bytes32::try_from(node.as_bytes()).expect("Node is always 32 byte slice")
-				})
-				.collect(),
-		})
+		Ok(AncestryProof::BlockRoots { block_roots_proof, block_roots_branch })
 	}
 }
