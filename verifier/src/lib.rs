@@ -124,16 +124,9 @@ pub fn verify_sync_committee_attestation(
 			.map_err(|_| Error::InvalidRoot)?,
 	};
 
-	let branch = update
-		.finality_proof
-		.finality_branch
-		.iter()
-		.map(|node| Node::from_bytes(node.as_ref().try_into().unwrap()))
-		.collect::<Vec<_>>();
-
 	let is_merkle_branch_valid = is_valid_merkle_branch(
 		&finalized_checkpoint.hash_tree_root().map_err(|_| Error::InvalidRoot)?,
-		branch.iter(),
+		update.finality_proof.finality_branch.iter(),
 		FINALIZED_ROOT_INDEX_LOG2 as usize,
 		FINALIZED_ROOT_INDEX as usize,
 		&update.attested_header.state_root,
@@ -145,11 +138,6 @@ pub fn verify_sync_committee_attestation(
 
 	// verify the associated execution header of the finalized beacon header.
 	let mut execution_payload = update.execution_payload;
-	let multi_proof_vec = execution_payload.multi_proof;
-	let multi_proof_nodes = multi_proof_vec
-		.iter()
-		.map(|node| Node::from_bytes(node.as_ref().try_into().unwrap()))
-		.collect::<Vec<_>>();
 	let execution_payload_root = calculate_multi_merkle_root(
 		&[
 			Node::from_bytes(
@@ -165,7 +153,7 @@ pub fn verify_sync_committee_attestation(
 				.map_err(|_| Error::InvalidRoot)?,
 			execution_payload.timestamp.hash_tree_root().map_err(|_| Error::InvalidRoot)?,
 		],
-		&multi_proof_nodes,
+		&execution_payload.multi_proof,
 		&[
 			GeneralizedIndex(EXECUTION_PAYLOAD_STATE_ROOT_INDEX as usize),
 			GeneralizedIndex(EXECUTION_PAYLOAD_BLOCK_NUMBER_INDEX as usize),
@@ -173,15 +161,9 @@ pub fn verify_sync_committee_attestation(
 		],
 	);
 
-	let execution_payload_branch = execution_payload
-		.execution_payload_branch
-		.iter()
-		.map(|node| Node::from_bytes(node.as_ref().try_into().unwrap()))
-		.collect::<Vec<_>>();
-
 	let is_merkle_branch_valid = is_valid_merkle_branch(
 		&execution_payload_root,
-		execution_payload_branch.iter(),
+		execution_payload.execution_payload_branch.iter(),
 		EXECUTION_PAYLOAD_INDEX_LOG2 as usize,
 		EXECUTION_PAYLOAD_INDEX as usize,
 		&update.finalized_header.state_root,
@@ -199,17 +181,12 @@ pub fn verify_sync_committee_attestation(
 			Err(Error::InvalidUpdate)?
 		}
 
-		let next_sync_committee_branch = sync_committee_update
-			.next_sync_committee_branch
-			.iter()
-			.map(|node| Node::from_bytes(node.as_ref().try_into().unwrap()))
-			.collect::<Vec<_>>();
 		let is_merkle_branch_valid = is_valid_merkle_branch(
 			&sync_committee_update
 				.next_sync_committee
 				.hash_tree_root()
 				.map_err(|_| Error::MerkleizationError)?,
-			next_sync_committee_branch.iter(),
+			sync_committee_update.next_sync_committee_branch.iter(),
 			NEXT_SYNC_COMMITTEE_INDEX_LOG2 as usize,
 			NEXT_SYNC_COMMITTEE_INDEX as usize,
 			&update.attested_header.state_root,
