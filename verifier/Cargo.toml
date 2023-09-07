@@ -17,7 +17,13 @@ bls_on_arkworks = { version = "0.2.2", default-features = false }
 default = ["std"]
 std = [
     "ssz-rs/std",
-    "log/std"
+    "log/std",
+    "sync-committee-primitives/std",
+    "log/std",
+    "anyhow/std",
+    "ark-ec/std",
+    "ark-bls12-381/std",
+    "bls_on_arkworks/std"
 ]
 testnet = ["sync-committee-primitives/testnet"]
 mainnet = ["sync-committee-primitives/mainnet"]

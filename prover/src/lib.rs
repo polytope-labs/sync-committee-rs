@@ -23,7 +23,7 @@ use primitive_types::H256;
 use ssz_rs::{List, Merkleized, Node, Vector};
 use sync_committee_primitives::{
 	constants::{
-		BlsPublicKey, Hash32, ValidatorIndex, BLOCK_ROOTS_INDEX, BYTES_PER_LOGS_BLOOM,
+		BlsPublicKey, ValidatorIndex, BLOCK_ROOTS_INDEX, BYTES_PER_LOGS_BLOOM,
 		EPOCHS_PER_HISTORICAL_VECTOR, EPOCHS_PER_SLASHINGS_VECTOR, ETH1_DATA_VOTES_BOUND,
 		EXECUTION_PAYLOAD_BLOCK_NUMBER_INDEX, EXECUTION_PAYLOAD_INDEX,
 		EXECUTION_PAYLOAD_STATE_ROOT_INDEX, EXECUTION_PAYLOAD_TIMESTAMP_INDEX,
@@ -66,7 +66,7 @@ impl SyncCommitteeProver {
 		SyncCommitteeProver { node_url, client }
 	}
 
-	pub async fn fetch_finalized_checkpoint(&self) -> Result<FinalityCheckpoint, reqwest::Error> {
+	pub async fn fetch_finalized_checkpoint(&self) -> Result<FinalityCheckpoint, anyhow::Error> {
 		let full_url = self.generate_route(&finality_checkpoints("head"));
 		let response = self.client.get(full_url).send().await?;
 
@@ -75,7 +75,7 @@ impl SyncCommitteeProver {
 		Ok(response_data.data)
 	}
 
-	pub async fn fetch_header(&self, block_id: &str) -> Result<BeaconBlockHeader, reqwest::Error> {
+	pub async fn fetch_header(&self, block_id: &str) -> Result<BeaconBlockHeader, anyhow::Error> {
 		let path = header_route(block_id);
 		let full_url = self.generate_route(&path);
 		let response = self.client.get(full_url).send().await?;
@@ -105,7 +105,7 @@ impl SyncCommitteeProver {
 			MAX_BYTES_PER_TRANSACTION,
 			MAX_TRANSACTIONS_PER_PAYLOAD,
 		>,
-		reqwest::Error,
+		anyhow::Error,
 	> {
 		let path = block_route(block_id);
 		let full_url = self.generate_route(&path);
@@ -122,7 +122,7 @@ impl SyncCommitteeProver {
 	pub async fn fetch_sync_committee(
 		&self,
 		state_id: &str,
-	) -> Result<NodeSyncCommittee, reqwest::Error> {
+	) -> Result<NodeSyncCommittee, anyhow::Error> {
 		let path = sync_committee_route(state_id);
 		let full_url = self.generate_route(&path);
 
@@ -139,7 +139,7 @@ impl SyncCommitteeProver {
 		&self,
 		state_id: &str,
 		validator_index: &str,
-	) -> Result<Validator, reqwest::Error> {
+	) -> Result<Validator, anyhow::Error> {
 		let path = validator_route(state_id, validator_index);
 		let full_url = self.generate_route(&path);
 
@@ -155,7 +155,7 @@ impl SyncCommitteeProver {
 	pub async fn fetch_beacon_state(
 		&self,
 		state_id: &str,
-	) -> Result<BeaconStateType, reqwest::Error> {
+	) -> Result<BeaconStateType, anyhow::Error> {
 		let path = beacon_state_route(state_id);
 		let full_url = self.generate_route(&path);
 
@@ -171,14 +171,14 @@ impl SyncCommitteeProver {
 	pub async fn fetch_processed_sync_committee(
 		&self,
 		state_id: &str,
-	) -> Result<SyncCommittee<SYNC_COMMITTEE_SIZE>, reqwest::Error> {
+	) -> Result<SyncCommittee<SYNC_COMMITTEE_SIZE>, anyhow::Error> {
 		// fetches sync committee from Node
 		let node_sync_committee = self.fetch_sync_committee(state_id).await?;
 
 		let mut validators: List<Validator, VALIDATOR_REGISTRY_LIMIT> = Default::default();
-		for validator_index in node_sync_committee.validators.clone() {
+		for validator_index in node_sync_committee.validators.iter() {
 			// fetches validator based on validator index
-			let validator = self.fetch_validator(state_id, &validator_index).await?;
+			let validator = self.fetch_validator(state_id, validator_index).await?;
 			validators.push(validator);
 		}
 
@@ -186,16 +186,16 @@ impl SyncCommitteeProver {
 			.validators
 			.into_iter()
 			.map(|i| {
-				let validator_index: ValidatorIndex = i.parse().unwrap();
-				validators[validator_index].public_key.clone()
+				let validator_index: ValidatorIndex = i.parse()?;
+				Ok(validators[validator_index].public_key.clone())
 			})
-			.collect::<Vec<_>>();
+			.collect::<Result<Vec<_>, anyhow::Error>>()?;
 
-		let aggregate_public_key = eth_aggregate_public_keys(&public_keys_vector).unwrap();
+		let aggregate_public_key = eth_aggregate_public_keys(&public_keys_vector)?;
 
 		let sync_committee = SyncCommittee::<SYNC_COMMITTEE_SIZE> {
 			public_keys: Vector::<BlsPublicKey, SYNC_COMMITTEE_SIZE>::try_from(public_keys_vector)
-				.unwrap(),
+				.map_err(|e| anyhow!("{:?}", e))?,
 			aggregate_public_key,
 		};
 
@@ -212,7 +212,7 @@ pub fn get_attested_epoch(finalized_epoch: u64) -> u64 {
 }
 
 pub fn prove_execution_payload(
-	mut beacon_state: BeaconStateType,
+	beacon_state: &mut BeaconStateType,
 ) -> anyhow::Result<ExecutionPayloadProof> {
 	let indices = [
 		EXECUTION_PAYLOAD_STATE_ROOT_INDEX as usize,
@@ -227,40 +227,32 @@ pub fn prove_execution_payload(
 
 	Ok(ExecutionPayloadProof {
 		state_root: H256::from_slice(
-			beacon_state
-				.latest_execution_payload_header
-				.state_root
-				.clone()
-				.to_vec()
-				.as_slice(),
+			beacon_state.latest_execution_payload_header.state_root.as_slice(),
 		),
 		block_number: beacon_state.latest_execution_payload_header.block_number,
 		timestamp: beacon_state.latest_execution_payload_header.timestamp,
 		multi_proof,
 		execution_payload_branch: ssz_rs::generate_proof(
-			&mut beacon_state,
+			beacon_state,
 			&[EXECUTION_PAYLOAD_INDEX as usize],
 		)?,
 	})
 }
 
-pub fn prove_sync_committee_update(mut state: BeaconStateType) -> anyhow::Result<Vec<Node>> {
-	let proof = ssz_rs::generate_proof(&mut state, &[NEXT_SYNC_COMMITTEE_INDEX as usize])?;
+pub fn prove_sync_committee_update(state: &mut BeaconStateType) -> anyhow::Result<Vec<Node>> {
+	let proof = ssz_rs::generate_proof(state, &[NEXT_SYNC_COMMITTEE_INDEX as usize])?;
 	Ok(proof)
 }
 
-pub fn prove_finalized_header(mut state: BeaconStateType) -> anyhow::Result<Vec<Hash32>> {
+pub fn prove_finalized_header(state: &mut BeaconStateType) -> anyhow::Result<Vec<Node>> {
 	let indices = [FINALIZED_ROOT_INDEX as usize];
-	let proof = ssz_rs::generate_proof(&mut state, indices.as_slice())?;
+	let proof = ssz_rs::generate_proof(state, indices.as_slice())?;
 
-	Ok(proof
-		.into_iter()
-		.map(|node| Hash32::try_from(node.as_ref()).expect("Node is always a 32 byte slice"))
-		.collect())
+	Ok(proof)
 }
 
 pub fn prove_block_roots_proof(
-	mut state: BeaconStateType,
+	state: &mut BeaconStateType,
 	mut header: BeaconBlockHeader,
 ) -> anyhow::Result<AncestryProof> {
 	// Check if block root should still be part of the block roots vector on the beacon state
@@ -287,7 +279,7 @@ pub fn prove_block_roots_proof(
 		let block_roots_proof =
 			BlockRootsProof { block_header_index: block_index as u64, block_header_branch: proof };
 
-		let block_roots_branch = ssz_rs::generate_proof(&mut state, &[BLOCK_ROOTS_INDEX as usize])?;
+		let block_roots_branch = ssz_rs::generate_proof(state, &[BLOCK_ROOTS_INDEX as usize])?;
 		Ok(AncestryProof::BlockRoots { block_roots_proof, block_roots_branch })
 	}
 }

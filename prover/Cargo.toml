@@ -6,28 +6,28 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-sync-committee-primitives = { path= "../primitives", default-features = false }
-sync-committee-verifier = { path= "../verifier", default-features = false}
+sync-committee-primitives = { path= "../primitives" }
+sync-committee-verifier = { path= "../verifier" }
 ssz-rs = { git = "https://github.com/polytope-labs/ssz-rs",  branch = "main" }
 reqwest = {version="0.11.14", features=["json"]}
-serde = { version = "1.0.185", optional = true, features = ["derive"] }
+serde = { version = "1.0.185", features = ["derive"] }
 serde_json = { version = "1.0.81"}
 anyhow = "1.0.68"
-actix-rt = "*"
 tokio = { version =  "1.18.2", features = ["full"]}
 tokio-stream = { version = "0.1.8" }
 async-stream = { version = "0.3.3"}
-base2 = {version= "0.3.1", default-features=false}
+base2 = {version= "0.3.1" }
 env_logger = "0.10.0"
-ark-ec = { version = "0.4.2", default-features = false }
-ark-bls12-381 = { version = "0.4.0", default-features = false }
-bls_on_arkworks = { version = "0.2.2", default-features = false }
-primitive-types = { version = "0.12.1", default-features = false, features = ["serde_no_std", "impl-codec"] }
+ark-ec = { version = "0.4.2" }
+ark-bls12-381 = { version = "0.4.0" }
+bls_on_arkworks = { version = "0.2.2" }
+primitive-types = { version = "0.12.1", features = ["serde_no_std", "impl-codec"] }
 
 [dev-dependencies]
 hex = "0.4.3"
 sync-committee-primitives = { path= "../primitives" }
 sync-committee-verifier = { path= "../verifier" }
+tokio = { version = "1.32.0", features = ["full"] }
 
 
 [features]
@@ -38,8 +38,7 @@ std = [
     "anyhow/std",
     "ark-ec/std",
     "bls_on_arkworks/std",
-    "ark-bls12-381/std",
-    "serde"
+    "ark-bls12-381/std"
 ]
 testnet = ["sync-committee-primitives/testnet", "sync-committee-verifier/testnet"]
 mainnet = ["sync-committee-primitives/mainnet", "sync-committee-verifier/mainnet"]
