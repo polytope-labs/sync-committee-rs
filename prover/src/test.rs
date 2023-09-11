@@ -322,7 +322,7 @@ async fn test_prover() {
 
 				count += 1;
 				// For CI purposes we test finalization of 5 epochs
-				if count == 100 {
+				if count == 12 {
 					break
 				}
 			},

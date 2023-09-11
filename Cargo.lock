@@ -3247,7 +3247,7 @@ dependencies = [
 [[package]]
 name = "ssz-rs"
 version = "0.8.0"
-source = "git+https://github.com/polytope-labs/ssz-rs?branch=main#81e9f63c93ca33f5f484ac301553f04912f2de23"
+source = "git+https://github.com/polytope-labs/ssz-rs?branch=main#6f5d37b7f92875b5cbb6ef60e8c498ca013943cb"
 dependencies = [
  "as-any",
  "bitvec",
@@ -3263,7 +3263,7 @@ dependencies = [
 [[package]]
 name = "ssz-rs-derive"
 version = "0.8.0"
-source = "git+https://github.com/polytope-labs/ssz-rs?branch=main#81e9f63c93ca33f5f484ac301553f04912f2de23"
+source = "git+https://github.com/polytope-labs/ssz-rs?branch=main#6f5d37b7f92875b5cbb6ef60e8c498ca013943cb"
 dependencies = [
  "proc-macro2",
  "quote",
