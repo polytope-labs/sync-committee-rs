@@ -54,15 +54,17 @@ pub fn verify_sync_committee_attestation(
 
 	// Verify update is valid
 	let is_valid_update = update.signature_slot > update.attested_header.slot &&
-		update.attested_header.slot >= update.finalized_header.slot;
+		update.attested_header.slot > update.finalized_header.slot;
 	if !is_valid_update {
-		Err(Error::InvalidUpdate("Update slot does not follow the required pattern".into()))?
+		Err(Error::InvalidUpdate(
+			"relationship between slots does not meet the requirements".into(),
+		))?
 	}
 
 	if should_get_sync_committee_update(update.attested_header.slot) &&
 		update.sync_committee_update.is_none()
 	{
-		Err(Error::InvalidUpdate("Sync committee update missing".into()))?
+		Err(Error::InvalidUpdate("Sync committee update is required".into()))?
 	}
 
 	let state_period = compute_sync_committee_period_at_slot(trusted_state.finalized_header.slot);
@@ -72,7 +74,7 @@ pub fn verify_sync_committee_attestation(
 	}
 
 	if update.attested_header.slot <= trusted_state.finalized_header.slot {
-		Err(Error::InvalidUpdate("Update is irrelevant".into()))?
+		Err(Error::InvalidUpdate("Update is expired".into()))?
 	}
 
 	// Verify sync committee aggregate signature

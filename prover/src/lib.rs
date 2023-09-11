@@ -224,8 +224,7 @@ impl SyncCommitteeProver {
 		debug_target: &str,
 	) -> Result<Option<LightClientUpdate>, anyhow::Error> {
 		if finality_checkpoint.root == Node::default() ||
-			finality_checkpoint.epoch <= client_state.latest_finalized_epoch ||
-			finality_checkpoint.root == client_state.finalized_header.clone().hash_tree_root()?
+			finality_checkpoint.epoch <= client_state.latest_finalized_epoch
 		{
 			return Ok(None)
 		}
