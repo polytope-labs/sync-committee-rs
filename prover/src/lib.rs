@@ -241,7 +241,6 @@ impl SyncCommitteeProver {
 		};
 		let mut block = self.fetch_block(&get_block_id(latest_root)).await?;
 		let min_signatures = (2 * SYNC_COMMITTEE_SIZE) / 3;
-		let mut num_signatures = block.body.sync_aggregate.sync_committee_bits.count_ones();
 		let state_period =
 			compute_sync_committee_period_at_slot(client_state.finalized_header.slot);
 		loop {
@@ -250,22 +249,18 @@ impl SyncCommitteeProver {
 				return Ok(None)
 			}
 
+			let parent_root = block.parent_root;
+			let block_id = get_block_id(parent_root);
+			block = self.fetch_block(&block_id).await?;
+
+			let num_signatures = block.body.sync_aggregate.sync_committee_bits.count_ones();
+
 			let signature_period = compute_sync_committee_period_at_slot(block.slot);
 			if num_signatures >= min_signatures &&
 				(state_period..=state_period + 1).contains(&signature_period)
 			{
 				break
 			}
-
-			let parent_root = block.parent_root;
-			let block_id = get_block_id(parent_root);
-			block = self.fetch_block(&block_id).await?;
-
-			num_signatures = block.body.sync_aggregate.sync_committee_bits.count_ones();
-		}
-
-		if num_signatures < min_signatures {
-			return Ok(None)
 		}
 
 		let attested_block_id = get_block_id(block.parent_root);
@@ -304,8 +299,6 @@ impl SyncCommitteeProver {
 			sync_aggregate: block.body.sync_aggregate,
 			signature_slot: block.slot,
 		};
-
-		dbg!(&light_client_update.sync_committee_update);
 
 		Ok(Some(light_client_update))
 	}
