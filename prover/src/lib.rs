@@ -243,8 +243,9 @@ impl SyncCommitteeProver {
 		let state_period =
 			compute_sync_committee_period_at_slot(client_state.finalized_header.slot);
 		loop {
-			// If we get to an epoch that is less than the attested epoch exit
-			if compute_epoch_at_slot(block.slot) < finality_checkpoint.epoch + 2 {
+			// If we get to an epoch that is less than the attested epoch for the last known
+			// finalized header we exit
+			if compute_epoch_at_slot(block.slot) < client_state.latest_finalized_epoch + 2 {
 				return Ok(None)
 			}
 
