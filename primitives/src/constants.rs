@@ -32,7 +32,6 @@ pub const BLS_SECRET_KEY_BYTES_LEN: usize = 32;
 pub const BLS_SIGNATURE_BYTES_LEN: usize = 96;
 
 pub const SYNC_COMMITTEE_SIZE: usize = 512;
-pub const EPOCHS_PER_SYNC_COMMITTEE_PERIOD: Epoch = 256;
 
 pub const MAX_VALIDATORS_PER_COMMITTEE: usize = 2048;
 pub const EPOCHS_PER_ETH1_VOTING_PERIOD: Epoch = 64;
@@ -98,6 +97,7 @@ pub mod testnet {
 	pub const MAX_WITHDRAWALS_PER_PAYLOAD: usize = 16;
 	pub const MAX_BLS_TO_EXECUTION_CHANGES: usize = 16;
 	pub const MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP: usize = 16384;
+	pub const EPOCHS_PER_SYNC_COMMITTEE_PERIOD: Epoch = 256;
 }
 
 #[cfg(feature = "mainnet")]
@@ -116,6 +116,7 @@ pub mod mainnet {
 	pub const MAX_WITHDRAWALS_PER_PAYLOAD: usize = 16;
 	pub const MAX_BLS_TO_EXECUTION_CHANGES: usize = 16;
 	pub const MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP: usize = 16384;
+	pub const EPOCHS_PER_SYNC_COMMITTEE_PERIOD: Epoch = 256;
 }
 
 #[cfg(all(not(feature = "mainnet"), not(feature = "testnet")))]
@@ -135,4 +136,5 @@ pub mod devnet {
 	pub const MAX_WITHDRAWALS_PER_PAYLOAD: usize = 16;
 	pub const MAX_BLS_TO_EXECUTION_CHANGES: usize = 16;
 	pub const MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP: usize = 16384;
+	pub const EPOCHS_PER_SYNC_COMMITTEE_PERIOD: Epoch = 10;
 }
