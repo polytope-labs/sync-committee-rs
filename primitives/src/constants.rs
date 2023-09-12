@@ -136,5 +136,5 @@ pub mod devnet {
 	pub const MAX_WITHDRAWALS_PER_PAYLOAD: usize = 16;
 	pub const MAX_BLS_TO_EXECUTION_CHANGES: usize = 16;
 	pub const MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP: usize = 16384;
-	pub const EPOCHS_PER_SYNC_COMMITTEE_PERIOD: Epoch = 10;
+	pub const EPOCHS_PER_SYNC_COMMITTEE_PERIOD: Epoch = 256;
 }
