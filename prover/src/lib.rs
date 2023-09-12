@@ -267,11 +267,14 @@ impl SyncCommitteeProver {
 		let attested_header = self.fetch_header(&attested_block_id).await?;
 		let mut attested_state =
 			self.fetch_beacon_state(&get_block_id(attested_header.state_root)).await?;
+
+		if attested_state.finalized_checkpoint.root == Node::default() {
+			return Ok(None)
+		}
 		let finalized_block_id = get_block_id(attested_state.finalized_checkpoint.root);
 		let finalized_header = self.fetch_header(&finalized_block_id).await?;
 		let mut finalized_state =
 			self.fetch_beacon_state(&get_block_id(finalized_header.state_root)).await?;
-
 		let finality_proof = FinalityProof {
 			epoch: attested_state.finalized_checkpoint.epoch,
 			finality_branch: prove_finalized_header(&mut attested_state)?,

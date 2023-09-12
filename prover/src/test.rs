@@ -26,17 +26,17 @@ use tokio_stream::StreamExt;
 const CONSENSUS_NODE_URL: &'static str = "http://localhost:3500";
 const EL_NODE_URL: &'static str = "http://localhost:8545";
 
-async fn wait_for_el() {
+async fn wait_for_el(blocks: usize) {
 	let provider = Provider::<Http>::connect(EL_NODE_URL).await;
 	let sub = provider.watch_blocks().await.unwrap();
-	let _ = sub.take(10).collect::<Vec<_>>();
+	let _ = sub.take(blocks).collect::<Vec<_>>();
 }
 
 #[cfg(test)]
 #[allow(non_snake_case)]
 #[tokio::test]
 async fn fetch_block_header_works() {
-	wait_for_el().await;
+	wait_for_el(1).await;
 	let sync_committee_prover = SyncCommitteeProver::new(CONSENSUS_NODE_URL.to_string());
 	let block_header = sync_committee_prover.fetch_header("head").await;
 	assert!(block_header.is_ok());
@@ -46,7 +46,7 @@ async fn fetch_block_header_works() {
 #[allow(non_snake_case)]
 #[tokio::test]
 async fn fetch_block_works() {
-	wait_for_el().await;
+	wait_for_el(1).await;
 	let sync_committee_prover = SyncCommitteeProver::new(CONSENSUS_NODE_URL.to_string());
 	let block = sync_committee_prover.fetch_block("head").await;
 	assert!(block.is_ok());
@@ -56,7 +56,7 @@ async fn fetch_block_works() {
 #[allow(non_snake_case)]
 #[tokio::test]
 async fn fetch_validator_works() {
-	wait_for_el().await;
+	wait_for_el(1).await;
 	let sync_committee_prover = SyncCommitteeProver::new(CONSENSUS_NODE_URL.to_string());
 	let validator = sync_committee_prover.fetch_validator("head", "0").await;
 	assert!(validator.is_ok());
@@ -67,7 +67,7 @@ async fn fetch_validator_works() {
 #[tokio::test]
 #[ignore]
 async fn fetch_processed_sync_committee_works() {
-	wait_for_el().await;
+	wait_for_el(1).await;
 	let sync_committee_prover = SyncCommitteeProver::new(CONSENSUS_NODE_URL.to_string());
 	let validator = sync_committee_prover.fetch_processed_sync_committee("head").await;
 	assert!(validator.is_ok());
@@ -114,7 +114,7 @@ async fn generate_indexes() {
 #[allow(non_snake_case)]
 #[tokio::test]
 async fn fetch_beacon_state_works() {
-	wait_for_el().await;
+	wait_for_el(1).await;
 	let sync_committee_prover = SyncCommitteeProver::new(CONSENSUS_NODE_URL.to_string());
 	let beacon_state = sync_committee_prover.fetch_beacon_state("head").await;
 	assert!(beacon_state.is_ok());
@@ -124,7 +124,7 @@ async fn fetch_beacon_state_works() {
 #[allow(non_snake_case)]
 #[tokio::test]
 async fn state_root_and_block_header_root_matches() {
-	wait_for_el().await;
+	wait_for_el(1).await;
 	let sync_committee_prover = SyncCommitteeProver::new(CONSENSUS_NODE_URL.to_string());
 	let mut beacon_state = sync_committee_prover.fetch_beacon_state("head").await.unwrap();
 
@@ -141,7 +141,7 @@ async fn state_root_and_block_header_root_matches() {
 #[allow(non_snake_case)]
 #[tokio::test]
 async fn fetch_finality_checkpoints_work() {
-	wait_for_el().await;
+	wait_for_el(1).await;
 	let sync_committee_prover = SyncCommitteeProver::new(CONSENSUS_NODE_URL.to_string());
 	let finality_checkpoint = sync_committee_prover.fetch_finalized_checkpoint().await;
 	assert!(finality_checkpoint.is_ok());
@@ -151,7 +151,7 @@ async fn fetch_finality_checkpoints_work() {
 #[allow(non_snake_case)]
 #[tokio::test]
 async fn test_finalized_header() {
-	wait_for_el().await;
+	wait_for_el(1).await;
 	let sync_committee_prover = SyncCommitteeProver::new(CONSENSUS_NODE_URL.to_string());
 	let mut state = sync_committee_prover.fetch_beacon_state("head").await.unwrap();
 
@@ -178,7 +178,7 @@ async fn test_finalized_header() {
 #[allow(non_snake_case)]
 #[tokio::test]
 async fn test_execution_payload_proof() {
-	wait_for_el().await;
+	wait_for_el(10).await;
 	let sync_committee_prover = SyncCommitteeProver::new(CONSENSUS_NODE_URL.to_string());
 
 	let mut finalized_state = sync_committee_prover.fetch_beacon_state("head").await.unwrap();
@@ -229,7 +229,7 @@ async fn test_execution_payload_proof() {
 #[allow(non_snake_case)]
 #[tokio::test]
 async fn test_sync_committee_update_proof() {
-	wait_for_el().await;
+	wait_for_el(1).await;
 	let sync_committee_prover = SyncCommitteeProver::new(CONSENSUS_NODE_URL.to_string());
 
 	let mut finalized_state = sync_committee_prover.fetch_beacon_state("head").await.unwrap();
@@ -269,7 +269,7 @@ async fn test_prover() {
 		.filter_module("prover", LevelFilter::Debug)
 		.format_module_path(false)
 		.init();
-	wait_for_el().await;
+	wait_for_el(1).await;
 	let node_url = format!("{}/eth/v1/events?topics=finalized_checkpoint", CONSENSUS_NODE_URL);
 
 	let sync_committee_prover = SyncCommitteeProver::new(CONSENSUS_NODE_URL.to_string());
@@ -339,7 +339,7 @@ async fn test_prover() {
 #[allow(non_snake_case)]
 #[tokio::test]
 async fn test_sync_committee_signature_verification() {
-	wait_for_el().await;
+	wait_for_el(1).await;
 	let sync_committee_prover = SyncCommitteeProver::new(CONSENSUS_NODE_URL.to_string());
 	let block = loop {
 		let block = sync_committee_prover.fetch_block("head").await.unwrap();
