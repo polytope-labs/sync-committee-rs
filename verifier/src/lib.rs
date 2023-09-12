@@ -61,12 +61,6 @@ pub fn verify_sync_committee_attestation(
 		))?
 	}
 
-	if should_get_sync_committee_update(update.attested_header.slot) &&
-		update.sync_committee_update.is_none()
-	{
-		Err(Error::InvalidUpdate("Sync committee update is required".into()))?
-	}
-
 	let state_period = compute_sync_committee_period_at_slot(trusted_state.finalized_header.slot);
 	let update_signature_period = compute_sync_committee_period_at_slot(update.signature_slot);
 	if !(state_period..=state_period + 1).contains(&update_signature_period) {
@@ -172,6 +166,10 @@ pub fn verify_sync_committee_attestation(
 	}
 
 	if let Some(mut sync_committee_update) = update.sync_committee_update.clone() {
+		if !should_get_sync_committee_update(update.attested_header.slot) {
+			Err(Error::InvalidUpdate("Current sync committee period has not elapsed".into()))?
+		}
+
 		let sync_root = sync_committee_update
 			.next_sync_committee
 			.hash_tree_root()

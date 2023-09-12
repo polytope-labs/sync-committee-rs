@@ -11,6 +11,7 @@ use alloc::{vec, vec::Vec};
 use anyhow::anyhow;
 use ssz_rs::prelude::*;
 
+/// Returns true if the next epoch is the start of a new sync committee period
 pub fn should_get_sync_committee_update(slot: Slot) -> bool {
 	let next_epoch = compute_epoch_at_slot(slot) + 1;
 	next_epoch % EPOCHS_PER_SYNC_COMMITTEE_PERIOD == 0
