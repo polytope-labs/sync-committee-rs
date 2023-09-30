@@ -76,7 +76,7 @@ pub const BLOCK_ROOTS_INDEX_LOG2: u64 = 5;
 pub const HISTORICAL_ROOTS_INDEX_LOG2: u64 = 5;
 
 #[cfg(feature = "testnet")]
-pub use testnet::*;
+pub use goerli::*;
 
 #[cfg(feature = "mainnet")]
 pub use mainnet::*;
@@ -86,7 +86,7 @@ use crate::ssz::ByteVector;
 pub use devnet::*;
 
 #[cfg(feature = "goerli")]
-pub mod testnet {
+pub mod goerli {
 	use super::*;
 	pub const SLOTS_PER_EPOCH: Slot = 32;
 	pub const GENESIS_VALIDATORS_ROOT: [u8; 32] =
