@@ -245,7 +245,7 @@ impl SyncCommitteeProver {
 		loop {
 			// If we get to an epoch that is less than the finalized epoch for the notification
 			if compute_epoch_at_slot(block.slot) <= finality_checkpoint.epoch {
-				debug!(target: "prover", "Signature block search has reached epoch  <= block epoch {} finalized_epoch {}", compute_epoch_at_slot(block.slot), finality_checkpoint.epoch);
+				debug!(target: "prover", "Signature block search has reached epoch  <= finalized epoch {} block_epoch {}", finality_checkpoint.epoch, compute_epoch_at_slot(block.slot));
 				return Ok(None)
 			}
 
