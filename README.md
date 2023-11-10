@@ -16,6 +16,9 @@ This library consists of
 - ✅ The prover.
 - ✅ The verifier
 
+## Deprecation 
+
+This repo has been moved to the [hyperbridge repo](https://github.com/polytope-labs/hyperbridge)
 
 ## primitives
 Consists of the types and structs as defined and described in the spec mentioned earlier. It also consists of the utility functions
